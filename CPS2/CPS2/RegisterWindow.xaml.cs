@@ -1,57 +1,54 @@
-﻿using System.Windows;
+﻿using BCrypt.Net;
+using System.Windows;
+using System.Linq;
 
-namespace CPS2;
-
-public partial class RegisterWindow : Window
+namespace CPS2
 {
-    public RegisterWindow()
+    public partial class RegisterWindow : Window
     {
-        InitializeComponent();
-    }
-
-    private void RegisterButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (PasswordBox.Password != ConfirmPasswordBox.Password)
+        public RegisterWindow()
         {
-            MessageBox.Show("Пароли не совпадают");
-            return;
+            InitializeComponent();
         }
 
-        if (!IsPasswordValid(PasswordBox.Password))
+        private void RegisterButton_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Пароль должен содержать минимум 8 символов, цифры и спецсимволы");
-            return;
+            // Проверка на совпадение паролей
+            if (PasswordBox.Password != ConfirmPasswordBox.Password)
+            {
+                MessageBox.Show("Пароли не совпадают.");
+                return;
+            }
+
+            using var db = new AppDbContext();
+            // Проверка, существует ли уже пользователь с таким логином
+            var existingUser = db.Users.FirstOrDefault(u => u.Username == UsernameTextBox.Text);
+            if (existingUser != null)
+            {
+                MessageBox.Show("Пользователь с таким логином уже существует.");
+                return;
+            }
+
+            // Хеширование пароля перед сохранением
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password);
+
+            // Создание нового пользователя
+            var newUser = new User
+            {
+                Username = UsernameTextBox.Text,
+                PasswordHash = hashedPassword,
+                Salt = "",  // Соль не требуется, так как она уже встроена в хеш
+                RegistrationDate = DateTime.UtcNow,
+                IsActive = true, // Устанавливаем активного пользователя
+                Role = "User" // Или другую роль, как требуется
+            };
+
+            // Добавление в базу данных
+            db.Users.Add(newUser);
+            db.SaveChanges();  // Сохранение изменений
+
+            MessageBox.Show("Регистрация успешна!");
+            this.Close();
         }
-
-        using var db = new AppDbContext();
-        if (db.Users.Any(u => u.Username == UsernameTextBox.Text))
-        {
-            MessageBox.Show("Пользователь уже существует");
-            return;
-        }
-
-        var salt = BCrypt.Net.BCrypt.GenerateSalt();
-        var user = new User
-        {
-            Username = UsernameTextBox.Text,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password, salt),
-            Salt = salt,
-            RegistrationDate = DateTime.Now,
-            IsActive = true,
-            Role = "user"
-        };
-
-        db.Users.Add(user);
-        db.SaveChanges();
-        MessageBox.Show("Регистрация успешна");
-        this.Close();
-    }
-
-    private bool IsPasswordValid(string password)
-    {
-        // Реализация проверки сложности пароля
-        return password.Length >= 8 && 
-               password.Any(char.IsDigit) && 
-               password.Any(c => !char.IsLetterOrDigit(c));
     }
 }

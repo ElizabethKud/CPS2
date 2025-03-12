@@ -4,23 +4,22 @@ namespace CPS2;
 
 public partial class GenreEditWindow : Window
 {
-    public Genre Genre { get; set; }
+    public Genre Genre { get; set; } = new Genre();
 
     public GenreEditWindow()
     {
         InitializeComponent();
-        Genre = new Genre();
+        DataContext = this;
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(GenreNameTextBox.Text))
+        if (string.IsNullOrWhiteSpace(Genre.GenreName))
         {
-            MessageBox.Show("Введите название жанра");
+            MessageBox.Show("Введите название жанра!");
             return;
         }
-        
-        Genre.GenreName = GenreNameTextBox.Text;
+            
         DialogResult = true;
         Close();
     }

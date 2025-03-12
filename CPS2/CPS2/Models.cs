@@ -1,69 +1,55 @@
-﻿namespace CPS2;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-
-public class Genre
+namespace CPS2
 {
-    public int Id { get; set; }
-    
-    [Required]
-    [StringLength(255)]
-    public string GenreName { get; set; }
-    
-    public ICollection<Series> Series { get; set; } = new List<Series>();
-}
+    [Table("genres")]
+    public class Genre
+    {
+        [Column("id")] public int Id { get; set; }
+        [Column("genre_name")] public string GenreName { get; set; }
+        public List<Series> Series { get; set; } = new();
+    }
 
-public class Series
-{
-    public int Id { get; set; }
-    
-    [Required]
-    [StringLength(255)]
-    public string SeriesName { get; set; }
-    
-    public int GenreId { get; set; }
-    public Genre Genre { get; set; }
-    
-    public ICollection<Book> Books { get; set; } = new List<Book>();
-}
+    [Table("series")]
+    public class Series
+    {
+        [Column("id")] public int Id { get; set; }
+        [Column("series_name")] public string SeriesName { get; set; }
+        [Column("genre_id")] public int GenreId { get; set; }
+        public Genre Genre { get; set; }
+        public List<Book> Books { get; set; } = new();
+    }
 
-public class Book
-{
-    public int Id { get; set; }
-    
-    [Required]
-    [StringLength(255)]
-    public string Title { get; set; }
-    
-    public int SeriesId { get; set; }
-    public Series Series { get; set; }
-    
-    [Range(1, 2024)]
-    public int PublicationYear { get; set; }
-    
-    public string Description { get; set; }
-}
+    [Table("books")]
+    public class Book
+    {
+        [Column("id")] public int Id { get; set; }
+        [Column("title")] public string Title { get; set; }
+        [Column("series_id")] public int SeriesId { get; set; }
+        [Column("publication_year")] public int PublicationYear { get; set; }
+        [Column("description")] public string Description { get; set; }
+        public Series Series { get; set; }
+    }
 
-public class User
-{
-    public int Id { get; set; }
-    
-    [Required]
-    [StringLength(100)]
-    public string Username { get; set; }
-    
-    [Required]
-    public string PasswordHash { get; set; }
-    
-    [Required]
-    public string Salt { get; set; }
-    
-    public DateTime RegistrationDate { get; set; }
-    
-    public bool IsActive { get; set; }
-    
-    [Required]
-    public string Role { get; set; }
+    [Table("users")]
+    public class User
+    {
+        [Column("id")] public int Id { get; set; }
+        [Column("username")] public string Username { get; set; }
+        [Column("password_hash")] public string PasswordHash { get; set; }
+        [Column("salt")] public string Salt { get; set; }
+        
+        // Преобразуем в UTC перед сохранением в БД
+        [Column("registration_date")]
+        public DateTime RegistrationDate 
+        { 
+            get => _registrationDate.ToUniversalTime();  // Возвращаем в формате UTC
+            set => _registrationDate = value.ToUniversalTime(); // Преобразуем в UTC при записи
+        }
+        private DateTime _registrationDate;
+
+        [Column("is_active")] public bool IsActive { get; set; }
+        [Column("role")] public string Role { get; set; }
+    }
 }

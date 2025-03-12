@@ -1,6 +1,7 @@
 ﻿<Window x:Class="CPS2.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:CPS2"
         Title="Книжная система" Height="600" Width="800">
     <Grid>
         <Grid.ColumnDefinitions>
@@ -9,16 +10,23 @@
         </Grid.ColumnDefinitions>
 
         <TreeView x:Name="HierarchyTreeView" Grid.Column="0" Margin="5">
-            <TreeView.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Header="Добавить жанр" Click="AddGenre_Click"/>
-                    <MenuItem Header="Добавить серию" Click="AddSeries_Click"/>
-                    <MenuItem Header="Добавить книгу" Click="AddBook_Click"/>
-                    <Separator/>
-                    <MenuItem Header="Удалить" Click="DeleteItem_Click"/>
-                    <MenuItem Header="Редактировать" Click="EditItem_Click"/>
-                </ContextMenu>
-            </TreeView.ContextMenu>
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate DataType="{x:Type local:Genre}" 
+                                          ItemsSource="{Binding Series}">
+                    <TextBlock Text="{Binding GenreName}"/>
+                    <HierarchicalDataTemplate.ItemTemplate>
+                        <HierarchicalDataTemplate DataType="{x:Type local:Series}" 
+                                                  ItemsSource="{Binding Books}">
+                            <TextBlock Text="{Binding SeriesName}"/>
+                            <HierarchicalDataTemplate.ItemTemplate>
+                                <DataTemplate DataType="{x:Type local:Book}">
+                                    <TextBlock Text="{Binding Title}"/>
+                                </DataTemplate>
+                            </HierarchicalDataTemplate.ItemTemplate>
+                        </HierarchicalDataTemplate>
+                    </HierarchicalDataTemplate.ItemTemplate>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
         </TreeView>
 
         <Frame x:Name="DetailsFrame" Grid.Column="1" Margin="5"/>
