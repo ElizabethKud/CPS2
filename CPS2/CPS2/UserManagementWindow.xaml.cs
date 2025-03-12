@@ -44,6 +44,7 @@ namespace CPS2
             }
         }
 
+
         private void DeleteUser_Click(object sender, RoutedEventArgs e)
         {
             if (UsersListView.SelectedItem is User selectedUser)

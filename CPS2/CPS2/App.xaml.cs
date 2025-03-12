@@ -1,17 +1,23 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿using System.Windows;
 
-namespace CPS2;
-
-public partial class App : Application
+namespace CPS2
 {
-    protected override void OnStartup(StartupEventArgs e)
+    public partial class App : Application
     {
-        base.OnStartup(e);
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
             
-        // Инициализация базы данных
-        using var db = new AppDbContext();
-        db.Database.EnsureCreated();
+            try
+            {
+                using var db = new AppDbContext();
+                db.Database.EnsureCreated();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка инициализации БД: {ex.Message}");
+                Shutdown();
+            }
+        }
     }
 }
