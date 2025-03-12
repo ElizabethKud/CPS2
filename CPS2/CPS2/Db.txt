@@ -27,20 +27,23 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    salt TEXT NOT NULL,
     registration_date TIMESTAMP NOT NULL DEFAULT NOW(),
+	last_login TIMESTAMP NOT NULL DEFAULT NOW(),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     role VARCHAR(50) CHECK (role IN ('admin', 'user')) NOT NULL DEFAULT 'user'
 );
 
--- Вставить админа с правильным BCrypt хешем (пароль: admin123), если пользователь с таким именем не существует
-INSERT INTO users (username, password_hash, salt, role) 
+-- Вставить админа с правильным BCrypt хешем (пароль: admin123!), если пользователь с таким именем не существует
+INSERT INTO users (username, password_hash, role) 
 VALUES (
     'Lisa', 
-    '$2a$11$5rQ9V9Uu5Z8p7b5X3z0Ee.FcevH.5QO5jQ1Q6QY7rRz1wJ9yY7X1K', 
-    '$2a$11$5rQ9V9Uu5Z8p7b5X3z0Ee', 
+    '$2a$11$N1aYAwD3emlQzLPS/0FJn.4PGLWtBLnciYVUbO3OU5l.3COyfXAFO', 
     'admin'
 ) ON CONFLICT (username) DO NOTHING;
 
 -- Проверка на наличие правильных данных
 SELECT * FROM users;
+
+SELECT conname, condeferrable, condeferred, pg_get_constraintdef(oid) 
+FROM pg_constraint 
+WHERE conname = 'users_role_check';
