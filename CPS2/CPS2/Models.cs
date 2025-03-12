@@ -38,7 +38,6 @@ namespace CPS2
         [Column("id")] public int Id { get; set; }
         [Column("username")] public string Username { get; set; }
         [Column("password_hash")] public string PasswordHash { get; set; }
-        [Column("salt")] public string Salt { get; set; }
         
         // Преобразуем в UTC перед сохранением в БД
         [Column("registration_date")]

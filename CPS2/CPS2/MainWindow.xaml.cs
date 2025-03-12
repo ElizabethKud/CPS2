@@ -34,22 +34,40 @@ namespace CPS2
             }
         }
 
-
         private void LoadData()
         {
             using var db = new AppDbContext();
-            var genres = db.Genres
-                .Include(g => g.Series)
-                .ThenInclude(s => s.Books)
-                .ToList();
-
-            if (genres == null)
-            {
-                MessageBox.Show("Не удалось загрузить жанры");
-                return;
-            }
-
+            var genres = db.Genres.Include(g => g.Series).ThenInclude(s => s.Books).ToList();
             HierarchyTreeView.ItemsSource = genres;
+        }
+
+        private void ManageUsers_Click(object sender, RoutedEventArgs e)
+        {
+            new UserManagementWindow().ShowDialog();
+        }
+
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            Application.Current.Shutdown();
+        }
+
+        private void CreateSampleData()
+        {
+            using var db = new AppDbContext();
+        
+            var genre = new Genre { GenreName = "Фантастика" };
+            var series = new Series { SeriesName = "Основание", Genre = genre };
+            var book = new Book { 
+                Title = "Основание", 
+                PublicationYear = 1951, 
+                Description = "Классика научной фантастики", 
+                Series = series 
+            };
+
+            db.Genres.Add(genre);
+            db.Series.Add(series);
+            db.Books.Add(book);
+            db.SaveChanges();
         }
 
 
@@ -177,6 +195,26 @@ namespace CPS2
                     break;
             }
         }
+        
+        private void HierarchyTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (e.NewValue is Book selectedBook)
+            {
+                // Открываем страницу с деталями книги
+                DetailsFrame.Content = new BookDetailsPage(selectedBook);
+            }
+            else if (e.NewValue is Series selectedSeries)
+            {
+                // Открываем страницу с деталями серии
+                DetailsFrame.Content = new SeriesDetailsPage(selectedSeries);
+            }
+            else if (e.NewValue is Genre selectedGenre)
+            {
+                // Открываем страницу с деталями жанра
+                DetailsFrame.Content = new GenreDetailsPage(selectedGenre);
+            }
+        }
+
 
         #endregion
 

@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:CPS2"
              StartupUri="LoginWindow.xaml">
     <Application.Resources>
-         
+        <local:AdminVisibilityConverter x:Key="AdminVisibilityConverter"/>
     </Application.Resources>
 </Application>

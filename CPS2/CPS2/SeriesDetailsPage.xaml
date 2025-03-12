@@ -1,0 +1,9 @@
+﻿<Page x:Class="CPS2.SeriesDetailsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Детали серии">
+    <StackPanel Margin="10">
+        <TextBlock Text="Название серии:" FontWeight="Bold"/>
+        <TextBlock Text="{Binding SeriesName}" FontSize="16"/>
+    </StackPanel>
+</Page>

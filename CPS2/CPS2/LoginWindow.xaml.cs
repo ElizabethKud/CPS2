@@ -16,9 +16,7 @@ namespace CPS2
             using var db = new AppDbContext();
             var user = db.Users.FirstOrDefault(u => u.Username == UsernameTextBox.Text);
 
-            if (user != null && 
-                BCrypt.Net.BCrypt.Verify(PasswordBox.Password, user.PasswordHash) && 
-                user.IsActive)
+            if (user != null && BCrypt.Net.BCrypt.Verify(PasswordBox.Password, user.PasswordHash) && user.IsActive)
             {
                 var mainWindow = new MainWindow(user);
                 mainWindow.Show();
@@ -29,7 +27,6 @@ namespace CPS2
                 MessageBox.Show("Ошибка авторизации!");
             }
         }
-
 
         private void RegisterButton_Click(object sender, RoutedEventArgs e)
         {

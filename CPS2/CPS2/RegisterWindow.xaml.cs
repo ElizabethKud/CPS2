@@ -30,16 +30,15 @@ namespace CPS2
             var newUser = new User
             {
                 Username = UsernameTextBox.Text,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password),
-                Salt = BCrypt.Net.BCrypt.GenerateSalt(),
-                Role = "user", // Исправлено на строчные буквы
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password), // Соль включена внутрь
+                Role = "user",
                 IsActive = true,
                 RegistrationDate = DateTime.UtcNow
             };
 
             db.Users.Add(newUser);
             db.SaveChanges();
-            
+
             MessageBox.Show("Регистрация успешна!");
             Close();
         }

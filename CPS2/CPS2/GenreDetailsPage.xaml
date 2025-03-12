@@ -1,0 +1,9 @@
+﻿<Page x:Class="CPS2.GenreDetailsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Детали жанра">
+    <StackPanel Margin="10">
+        <TextBlock Text="Название жанра:" FontWeight="Bold"/>
+        <TextBlock Text="{Binding GenreName}" FontSize="16"/>
+    </StackPanel>
+</Page>
