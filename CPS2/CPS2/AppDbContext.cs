@@ -1,6 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Npgsql.EntityFrameworkCore.PostgreSQL;
-
 
 namespace CPS2
 {
@@ -13,7 +11,7 @@ namespace CPS2
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseNpgsql("Host=localhost;Database=Books;Username=postgres;Password=485327");
+            optionsBuilder.UseNpgsql("Host=localhost;Database=Books;Username=postgres;Password=485327;Include Error Detail=true");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -21,12 +19,18 @@ namespace CPS2
             modelBuilder.Entity<Series>()
                 .HasOne(s => s.Genre)
                 .WithMany(g => g.Series)
-                .HasForeignKey(s => s.GenreId);
+                .HasForeignKey(s => s.GenreId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Book>()
                 .HasOne(b => b.Series)
                 .WithMany(s => s.Books)
-                .HasForeignKey(b => b.SeriesId);
+                .HasForeignKey(b => b.SeriesId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
         }
     }
 }

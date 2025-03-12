@@ -47,6 +47,8 @@ namespace CPS2
             set => _registrationDate = value.ToUniversalTime(); // Преобразуем в UTC при записи
         }
         private DateTime _registrationDate;
+        
+        [Column("last_login")] public DateTime LastLogin { get; set; }
 
         [Column("is_active")] public bool IsActive { get; set; }
         [Column("role")] public string Role { get; set; }

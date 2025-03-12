@@ -9,36 +9,40 @@ namespace CPS2
     public partial class MainWindow : Window
     {
         private readonly User _currentUser;
+        private AppDbContext _dbContext;
 
         public MainWindow(User user)
         {
             InitializeComponent();
             _currentUser = user;
-            LoadData();
+            _dbContext = new AppDbContext();
             SetupPermissions();
+            LoadData();
         }
 
         private void SetupPermissions()
         {
-            if (_currentUser?.Role != "admin")
+            if (_currentUser.Role != "admin")
             {
-                var contextMenu = HierarchyTreeView.ContextMenu;
-                if (contextMenu != null)
-                {
-                    foreach (var item in contextMenu.Items.OfType<MenuItem>())
-                    {
-                        if (item.Header?.ToString() != "Добавить книгу")
-                            item.Visibility = Visibility.Collapsed;
-                    }
-                }
+                AdminMenu.Visibility = Visibility.Collapsed;
+                TreeContextMenu.Items.Clear();
             }
         }
 
         private void LoadData()
         {
-            using var db = new AppDbContext();
-            var genres = db.Genres.Include(g => g.Series).ThenInclude(s => s.Books).ToList();
-            HierarchyTreeView.ItemsSource = genres;
+            _dbContext.Genres
+                .Include(g => g.Series)
+                .ThenInclude(s => s.Books)
+                .Load();
+            
+            HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
+        }
+
+        private void TreeView_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var treeViewItem = ((DependencyObject)e.OriginalSource).GetSelfAndAncestors<TreeViewItem>().FirstOrDefault();
+            if (treeViewItem != null) treeViewItem.IsSelected = true;
         }
 
         private void ManageUsers_Click(object sender, RoutedEventArgs e)
@@ -74,15 +78,14 @@ namespace CPS2
         #region Обработчики контекстного меню
 
         // Добавление жанра
+        // CRUD операции и обработчики событий
         private void AddGenre_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new GenreEditWindow();
             if (dialog.ShowDialog() == true)
             {
-                using var db = new AppDbContext();
-                db.Genres.Add(dialog.Genre);
-                db.SaveChanges();
-                LoadData();
+                _dbContext.Genres.Add(dialog.Genre);
+                _dbContext.SaveChanges();
             }
         }
 
@@ -124,33 +127,19 @@ namespace CPS2
         private void DeleteItem_Click(object sender, RoutedEventArgs e)
         {
             var selectedItem = HierarchyTreeView.SelectedItem;
-            if (selectedItem == null) return;
-
-            using var db = new AppDbContext();
             switch (selectedItem)
             {
                 case Genre genre:
-                    db.Genres.Remove(genre);
+                    _dbContext.Genres.Remove(genre);
                     break;
                 case Series series:
-                    db.Series.Remove(series);
+                    _dbContext.Series.Remove(series);
                     break;
                 case Book book:
-                    db.Books.Remove(book);
+                    _dbContext.Books.Remove(book);
                     break;
-                default:
-                    return;
             }
-    
-            try
-            {
-                db.SaveChanges();
-                LoadData();
-            }
-            catch (DbUpdateException ex)
-            {
-                MessageBox.Show($"Ошибка удаления: {ex.InnerException?.Message}");
-            }
+            _dbContext.SaveChanges();
         }
 
         // Редактирование выбранного элемента
@@ -246,5 +235,11 @@ namespace CPS2
         }
 
         #endregion
+        
+        protected override void OnClosed(EventArgs e)
+        {
+            _dbContext.Dispose();
+            base.OnClosed(e);
+        }
     }
 }
