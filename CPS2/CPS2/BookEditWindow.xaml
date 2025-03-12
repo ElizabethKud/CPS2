@@ -1,0 +1,19 @@
+﻿<!-- BookEditWindow.xaml -->
+<Window x:Class="CPS2.BookEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Редактирование книги" Height="300" Width="400">
+    <StackPanel Margin="10">
+        <TextBlock Text="Название книги:"/>
+        <TextBox x:Name="TitleTextBox" Text="{Binding Book.Title}"/>
+        
+        <TextBlock Text="Год издания:" Margin="0,10,0,0"/>
+        <TextBox x:Name="YearTextBox" Text="{Binding Book.PublicationYear}"/>
+        
+        <TextBlock Text="Описание:" Margin="0,10,0,0"/>
+        <TextBox x:Name="DescriptionTextBox" Text="{Binding Book.Description}"
+                 AcceptsReturn="True" Height="80"/>
+        
+        <Button Content="Сохранить" Click="SaveButton_Click" Margin="0,10"/>
+    </StackPanel>
+</Window>

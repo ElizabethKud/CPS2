@@ -1,0 +1,44 @@
+-- Создание таблицы жанров с проверкой существования
+CREATE TABLE IF NOT EXISTS "Genres" (
+    id SERIAL PRIMARY KEY,
+    genre_name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- Создание таблицы серий с проверкой существования
+CREATE TABLE IF NOT EXISTS "Series" (
+    id SERIAL PRIMARY KEY,
+    series_name VARCHAR(255) NOT NULL,
+    genre_id INT NOT NULL REFERENCES "Genres"(id) ON DELETE CASCADE
+);
+
+-- Создание таблицы книг с проверкой существования
+CREATE TABLE IF NOT EXISTS "Books" (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    series_id INT NOT NULL REFERENCES "Series"(id) ON DELETE CASCADE,
+    publication_year INT CHECK (publication_year > 0),
+    description TEXT
+);
+
+-- Создание таблицы пользователей с проверкой существования
+CREATE TABLE IF NOT EXISTS "Users" (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    salt TEXT NOT NULL,
+    registration_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    role VARCHAR(50) CHECK (role IN ('admin', 'user')) NOT NULL DEFAULT 'user'
+);
+
+-- Вставка администратора Лиза (пароль: admin123)
+-- Для этого потребуется хешированный пароль и соль
+INSERT INTO "Users" (username, password_hash, salt, role, is_active)
+SELECT 'Lisa', 
+       'hashed_value_here', 
+       'salt_value_here', 
+       'admin', 
+       TRUE
+WHERE NOT EXISTS (SELECT 1 FROM "Users" WHERE username = 'Lisa');
+
+SELECT * FROM "Users";
