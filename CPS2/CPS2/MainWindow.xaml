@@ -3,6 +3,26 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:CPS2"
         Title="Книжная система" Height="600" Width="800">
+    
+    <Window.Resources>
+        <!-- Стиль для TreeViewItem -->
+        <Style TargetType="{x:Type TreeViewItem}">
+            <Setter Property="AllowDrop" Value="True"/>
+            <Setter Property="IsExpanded" Value="True"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <TranslateTransform X="0" Y="0"/>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <!-- Событие для изменения фона при перетаскивании -->
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="Transparent"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -35,29 +55,9 @@
                         <EventSetter Event="PreviewMouseMove" Handler="TreeViewItem_PreviewMouseMove"/>
                         <EventSetter Event="DragOver" Handler="TreeViewItem_DragOver"/>
                         <EventSetter Event="Drop" Handler="TreeViewItem_Drop"/>
-                        <Setter Property="AllowDrop" Value="True"/>
-                        <Setter Property="IsExpanded" Value="True"/>
-                        <Setter Property="RenderTransform">
-                            <Setter.Value>
-                                <TranslateTransform X="0" Y="0"/>
-                            </Setter.Value>
-                        </Setter>
-                        <Style.Triggers>
-                            <Trigger Property="DragDrop.IsDragOver" Value="True">
-                                <Setter Property="Background" Value="#CCE8FF"/>
-                                <Setter Property="RenderTransform">
-                                    <Setter.Value>
-                                        <TranslateTransform X="2" Y="2"/>
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="Transparent"/>
-                            </Trigger>
-                        </Style.Triggers>
                     </Style>
                 </TreeView.Resources>
-                
+
                 <TreeView.ContextMenu>
                     <ContextMenu x:Name="TreeContextMenu">
                         <MenuItem Header="Добавить жанр" Click="AddGenre_Click"/>
@@ -68,7 +68,7 @@
                         <MenuItem Header="Удалить" Click="DeleteItem_Click"/>
                     </ContextMenu>
                 </TreeView.ContextMenu>
-                
+
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type local:Genre}" ItemsSource="{Binding Series}">
                         <TextBlock Text="{Binding GenreName}"/>

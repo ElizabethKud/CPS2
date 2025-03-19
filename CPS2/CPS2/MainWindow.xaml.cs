@@ -222,6 +222,7 @@ namespace CPS2
         {
             var items = HierarchyTreeView.ItemsSource as ObservableCollection<Genre>;
 
+            // Обновление для жанра
             if (updatedItem is Genre updatedGenre)
             {
                 var existingGenre = items.FirstOrDefault(g => g.Id == updatedGenre.Id);
@@ -236,6 +237,7 @@ namespace CPS2
                     items.Add(updatedGenre);
                 }
             }
+            // Обновление для серии
             else if (updatedItem is Series updatedSeries)
             {
                 var parentGenre = items.FirstOrDefault(g => g.Series.Any(s => s.Id == updatedSeries.Id));
@@ -246,6 +248,7 @@ namespace CPS2
                     newParent?.Series.Add(updatedSeries);
                 }
             }
+            // Обновление для книги
             else if (updatedItem is Book updatedBook)
             {
                 var parentSeries = items.SelectMany(g => g.Series)
@@ -260,6 +263,7 @@ namespace CPS2
             HierarchyTreeView.Items.Refresh();
             CommandManager.InvalidateRequerySuggested();
         }
+
         
         private void HierarchyTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
@@ -283,17 +287,17 @@ namespace CPS2
         #endregion
 
         #region Drag&Drop
-
-        // Обработчик перетаскивания элементов
+        
+        // Обработчик для начала перетаскивания элемента
         private object _draggedItem;
 
         private void TreeViewItem_PreviewMouseMove(object sender, MouseEventArgs e)
         {
             if (e.LeftButton == MouseButtonState.Pressed && sender is TreeViewItem item)
             {
-                // Убеждаемся, что элемент развернут
+                // Убеждаемся, что элемент развернут, если это нужно
                 item.IsExpanded = true;
-        
+
                 if (item.DataContext is Book book)
                 {
                     _draggedItem = book;
@@ -309,25 +313,21 @@ namespace CPS2
             }
         }
 
+        // Обработчик для перетаскивания (DragOver) элемента
         private void TreeViewItem_DragOver(object sender, DragEventArgs e)
         {
             var targetItem = sender as TreeViewItem;
             var sourceData = _draggedItem;
             var targetData = targetItem?.DataContext;
 
-            if (CanDrop(sourceData, targetData))
-            {
-                e.Effects = DragDropEffects.Move;
-                targetItem.Background = Brushes.LightBlue;
-            }
-            else
-            {
-                e.Effects = DragDropEffects.None;
-            }
-
+            e.Effects = CanDrop(sourceData, targetData) 
+                ? DragDropEffects.Move 
+                : DragDropEffects.None;
+            
             e.Handled = true;
         }
 
+        // Обработчик для завершения перетаскивания (Drop)
         private void TreeViewItem_Drop(object sender, DragEventArgs e)
         {
             var targetItem = sender as TreeViewItem;
@@ -341,32 +341,37 @@ namespace CPS2
 
             try
             {
+                // Перетаскивание книги
                 if (_draggedItem is Book draggedBook)
                 {
                     if (target is Series targetSeries)
                     {
+                        // Обновляем серию для книги
                         var oldSeries = draggedBook.Series;
                         oldSeries?.Books.Remove(draggedBook);
-                
+
                         draggedBook.Series = targetSeries;
                         draggedBook.SeriesId = targetSeries.Id;
                         targetSeries.Books.Add(draggedBook);
 
+                        // Обновление дерева для серий и книг
                         UpdateTreeViewItem(targetSeries);
                         UpdateTreeViewItem(oldSeries);
                     }
                 }
+                // Перетаскивание серии
                 else if (_draggedItem is Series draggedSeries)
                 {
                     if (target is Genre targetGenre)
                     {
                         var oldGenre = draggedSeries.Genre;
                         oldGenre?.Series.Remove(draggedSeries);
-                
+
                         draggedSeries.Genre = targetGenre;
                         draggedSeries.GenreId = targetGenre.Id;
                         targetGenre.Series.Add(draggedSeries);
 
+                        // Обновление дерева для жанра и серии
                         UpdateTreeViewItem(oldGenre);
                         UpdateTreeViewItem(targetGenre);
                     }
@@ -382,19 +387,23 @@ namespace CPS2
             {
                 MessageBox.Show($"Ошибка: {ex.Message}");
             }
-    
-            if (targetItem != null)
-                targetItem.Background = Brushes.Transparent;
-    
+
             _draggedItem = null;
             e.Handled = true;
         }
 
+        // Проверка, можно ли выполнить перетаскивание
         private bool CanDrop(object source, object target)
         {
-            return (source is Book && target is Series) ||
-                   (source is Series && target is Genre);
+            // Книга может быть перетащена в серию
+            if (source is Book && target is Series)
+                return true;
+            // Серию можно перетащить в жанр
+            if (source is Series && target is Genre)
+                return true;
+            return false;
         }
+
         
         #endregion
         
