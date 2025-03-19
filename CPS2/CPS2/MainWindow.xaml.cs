@@ -26,7 +26,11 @@ namespace CPS2
             if (_currentUser.Role != "admin")
             {
                 AdminMenu.Visibility = Visibility.Collapsed;
-                TreeContextMenu.Items.Clear();
+                TreeContextMenu.Visibility = Visibility.Collapsed; // Скрываем меню полностью
+            }
+            else
+            {
+                TreeContextMenu.Visibility = Visibility.Visible;
             }
         }
 
@@ -43,7 +47,7 @@ namespace CPS2
             AddEventHandlers(HierarchyTreeView);
         }
 
-        // Рекурсивно добавляет обработчики ко всем элементам дерева
+        // Добавляем обработчики для всех элементов дерева
         private void AddEventHandlers(ItemsControl parent)
         {
             foreach (var item in parent.Items)
@@ -52,7 +56,7 @@ namespace CPS2
                 {
                     treeViewItem.PreviewMouseMove += TreeViewItem_PreviewMouseMove;
                     treeViewItem.Drop += TreeViewItem_Drop;
-                    treeViewItem.DragOver += TreeViewItem_DragOver; // Добавьте эту строку
+                    treeViewItem.DragOver += TreeViewItem_DragOver;
                     treeViewItem.AllowDrop = true;
 
                     // Рекурсия для всех типов
@@ -79,26 +83,6 @@ namespace CPS2
         {
             Application.Current.Shutdown();
         }
-
-        private void CreateSampleData()
-        {
-            using var db = new AppDbContext();
-        
-            var genre = new Genre { GenreName = "Фантастика" };
-            var series = new Series { SeriesName = "Основание", Genre = genre };
-            var book = new Book { 
-                Title = "Основание", 
-                PublicationYear = 1951, 
-                Description = "Классика научной фантастики", 
-                Series = series 
-            };
-
-            db.Genres.Add(genre);
-            db.Series.Add(series);
-            db.Books.Add(book);
-            db.SaveChanges();
-        }
-
 
         #region Обработчики контекстного меню
 
@@ -230,6 +214,7 @@ namespace CPS2
             }
         }
         
+        // Для открытия подробностей книги, серии или жанра
         private void HierarchyTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             if (e.NewValue is Book selectedBook)
@@ -249,7 +234,6 @@ namespace CPS2
             }
         }
 
-
         #endregion
 
         #region Drag&Drop
@@ -257,19 +241,17 @@ namespace CPS2
         // Обработчик перетаскивания элементов
         private object _draggedItem;
 
+        // Обработчик перетаскивания элементов (книги и серии)
         private void TreeViewItem_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed && 
-                sender is TreeViewItem item)
+            if (e.LeftButton == MouseButtonState.Pressed && sender is TreeViewItem item)
             {
-                // Для книг
                 if (item.DataContext is Book book)
                 {
                     _draggedItem = book;
                     DragDrop.DoDragDrop(item, new DataObject(typeof(Book), book), DragDropEffects.Move);
                     e.Handled = true;
                 }
-                // Для серий (новый блок)
                 else if (item.DataContext is Series series)
                 {
                     _draggedItem = series;
@@ -279,12 +261,14 @@ namespace CPS2
             }
         }
 
+        // Обработка перетаскивания
         private void TreeViewItem_DragOver(object sender, DragEventArgs e)
         {
             var targetItem = sender as TreeViewItem;
             var sourceData = _draggedItem;
             var targetData = targetItem?.DataContext;
 
+            // Проверка возможности переноса
             if (CanDrop(sourceData, targetData))
             {
                 e.Effects = DragDropEffects.Move;
@@ -294,68 +278,101 @@ namespace CPS2
             {
                 e.Effects = DragDropEffects.None;
             }
+
             e.Handled = true;
         }
 
+        // Перемещение элемента в новую категорию
         private void TreeViewItem_Drop(object sender, DragEventArgs e)
         {
-            var targetItem = sender as TreeViewItem;
-            var target = targetItem?.DataContext;
-    
+            var treeViewItem = sender as TreeViewItem;
+            var target = treeViewItem?.DataContext;
+
             if (!CanDrop(_draggedItem, target))
             {
-                if(targetItem != null) targetItem.Background = Brushes.Transparent;
+                if (treeViewItem != null) treeViewItem.Background = Brushes.Transparent;
                 return;
             }
 
             try
             {
-                // Обработка для книг
                 if (_draggedItem is Book draggedBook)
                 {
                     if (target is Series targetSeries)
                     {
+                        // Получаем старую серию
                         var oldSeries = draggedBook.Series;
-                        oldSeries?.Books.Remove(draggedBook);
-                
-                        draggedBook.Series = targetSeries;
+
+                        if (oldSeries != null)
+                        {
+                            // Удаляем книгу из старой серии
+                            oldSeries.Books.Remove(draggedBook);
+                        }
+
+                        // Обновляем связь через EF Core
                         draggedBook.SeriesId = targetSeries.Id;
+
+                        // Добавляем книгу в новую серию
                         targetSeries.Books.Add(draggedBook);
+
+                        _dbContext.Entry(draggedBook).State = EntityState.Modified;
+                        _dbContext.SaveChanges();
                     }
                 }
-                // Обработка для серий (новый блок)
                 else if (_draggedItem is Series draggedSeries)
                 {
                     if (target is Genre targetGenre)
                     {
+                        // Получаем старый жанр
                         var oldGenre = draggedSeries.Genre;
-                        oldGenre?.Series.Remove(draggedSeries);
-                
-                        draggedSeries.Genre = targetGenre;
+
+                        if (oldGenre != null)
+                        {
+                            // Удаляем серию из старого жанра
+                            oldGenre.Series.Remove(draggedSeries);
+                        }
+
+                        // Обновляем связь через EF Core
                         draggedSeries.GenreId = targetGenre.Id;
+
+                        // Добавляем серию в новый жанр
                         targetGenre.Series.Add(draggedSeries);
+
+                        _dbContext.Entry(draggedSeries).State = EntityState.Modified;
+                        _dbContext.SaveChanges();
                     }
                 }
-
-                _dbContext.SaveChanges();
-                _dbContext.ChangeTracker.Entries().Where(e => e.Entity != null).ToList().ForEach(e => e.Reload());
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка: {ex.Message}");
             }
-    
-            if (targetItem != null)
-                targetItem.Background = Brushes.Transparent;
-    
-            _draggedItem = null;
-            e.Handled = true;
+            finally
+            {
+                if (treeViewItem != null)
+                    treeViewItem.Background = Brushes.Transparent;
+
+                _draggedItem = null;
+                e.Handled = true;
+            }
         }
-        
+
+        // Функция проверки возможности перетаскивания
         private bool CanDrop(object source, object target)
         {
-            return (source is Book && target is Series) || 
-                   (source is Series && target is Genre);
+            if (source is Book book && target is Series targetSeries)
+            {
+                // Разрешаем перенос книги в другую серию
+                return book.Series?.Id != targetSeries.Id;
+            }
+
+            if (source is Series series && target is Genre targetGenre)
+            {
+                // Разрешаем перенос серии в другой жанр
+                return series.Genre?.Id != targetGenre.Id;
+            }
+
+            return false;
         }
         
         #endregion
