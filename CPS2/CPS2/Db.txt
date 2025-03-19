@@ -21,6 +21,12 @@ CREATE TABLE IF NOT EXISTS books (
     publication_year INT CHECK (publication_year > 0),
     description TEXT
 );
+ALTER TABLE books
+ADD COLUMN author VARCHAR(255);
+-- Вставка новой книги с автором
+INSERT INTO books (title, series_id, publication_year, description, author)
+VALUES ('Название книги', 1, 2023, 'Описание книги', 'Автор книги');
+
 
 -- Создание таблицы users, если она не существует
 CREATE TABLE IF NOT EXISTS users (
@@ -43,7 +49,3 @@ VALUES (
 
 -- Проверка на наличие правильных данных
 SELECT * FROM users;
-
-SELECT conname, condeferrable, condeferred, pg_get_constraintdef(oid) 
-FROM pg_constraint 
-WHERE conname = 'users_role_check';
