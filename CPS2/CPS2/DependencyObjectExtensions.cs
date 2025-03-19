@@ -13,4 +13,15 @@ public static class DependencyObjectExtensions
             obj = VisualTreeHelper.GetParent(obj);
         }
     }
+    
+    public static T Clone<T>(this T source) where T : new()
+    {
+        var clone = new T();
+        foreach (var property in typeof(T).GetProperties())
+        {
+            if (property.CanWrite)
+                property.SetValue(clone, property.GetValue(source));
+        }
+        return clone;
+    }
 }

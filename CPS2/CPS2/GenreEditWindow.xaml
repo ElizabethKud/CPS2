@@ -4,7 +4,7 @@
         Title="Редактирование жанра" Height="200" Width="300">
     <StackPanel Margin="15">
         <TextBlock Text="Название жанра:"/>
-        <TextBox x:Name="GenreNameTextBox" Margin="0,5"/>
+        <TextBox Text="{Binding GenreName, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
         <Button Content="Сохранить" Click="SaveButton_Click" Margin="0,10" Padding="10,3"/>
     </StackPanel>
 </Window>

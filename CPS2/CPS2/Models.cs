@@ -1,14 +1,31 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Runtime.CompilerServices;
 
 namespace CPS2
 {
     [Table("genres")]
-    public class Genre
+    public class Genre : INotifyPropertyChanged
     {
-        [Column("id")] public int Id { get; set; }
-        [Column("genre_name")] public string GenreName { get; set; }
-        public List<Series> Series { get; set; } = new();
+        private string _genreName;
+
+        [Column("id")]
+        public int Id { get; set; }
+
+        [Column("genre_name")]
+        public string GenreName
+        {
+            get => _genreName;
+            set { _genreName = value; OnPropertyChanged(); }
+        }
+
+        public virtual ObservableCollection<Series> Series { get; set; } = new();
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     [Table("series")]

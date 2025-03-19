@@ -35,7 +35,7 @@ namespace CPS2
                 .Include(g => g.Series)
                 .ThenInclude(s => s.Books)
                 .Load();
-            
+
             HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
         }
 
@@ -86,6 +86,8 @@ namespace CPS2
             {
                 _dbContext.Genres.Add(dialog.Genre);
                 _dbContext.SaveChanges();
+                // Обновление дерева без перезагрузки всех данных
+                HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
             }
         }
 
@@ -101,6 +103,7 @@ namespace CPS2
                     dialog.Series.GenreId = selectedGenre.Id;
                     db.Series.Add(dialog.Series);
                     db.SaveChanges();
+                    // Обновление дерева без перезагрузки всех данных
                     LoadData();
                 }
             }
@@ -118,6 +121,7 @@ namespace CPS2
                     dialog.Book.SeriesId = selectedSeries.Id;
                     db.Books.Add(dialog.Book);
                     db.SaveChanges();
+                    // Обновление дерева без перезагрузки всех данных
                     LoadData();
                 }
             }
@@ -140,6 +144,8 @@ namespace CPS2
                     break;
             }
             _dbContext.SaveChanges();
+            // Обновление дерева без перезагрузки всех данных
+            LoadData();
         }
 
         // Редактирование выбранного элемента
@@ -157,6 +163,7 @@ namespace CPS2
                         using var db = new AppDbContext();
                         db.Genres.Update(genre);
                         db.SaveChanges();
+                        // Обновление дерева без перезагрузки всех данных
                         LoadData();
                     }
                     break;
@@ -168,6 +175,7 @@ namespace CPS2
                         using var db = new AppDbContext();
                         db.Series.Update(series);
                         db.SaveChanges();
+                        // Обновление дерева без перезагрузки всех данных
                         LoadData();
                     }
                     break;
@@ -179,6 +187,7 @@ namespace CPS2
                         using var db = new AppDbContext();
                         db.Books.Update(book);
                         db.SaveChanges();
+                        // Обновление дерева без перезагрузки всех данных
                         LoadData();
                     }
                     break;
@@ -230,6 +239,7 @@ namespace CPS2
                 draggedBook.SeriesId = targetSeries.Id;
                 db.Books.Update(draggedBook);
                 db.SaveChanges();
+                // Обновление дерева без перезагрузки всех данных
                 LoadData();
             }
         }

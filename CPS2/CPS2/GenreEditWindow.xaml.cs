@@ -1,26 +1,28 @@
 ﻿using System.Windows;
 
-namespace CPS2;
-
-public partial class GenreEditWindow : Window
+namespace CPS2
 {
-    public Genre Genre { get; set; } = new Genre();
-
-    public GenreEditWindow()
+    public partial class GenreEditWindow : Window
     {
-        InitializeComponent();
-        DataContext = this;
-    }
-
-    private void SaveButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(Genre.GenreName))
+        public GenreEditWindow()
         {
-            MessageBox.Show("Введите название жанра!");
-            return;
+            InitializeComponent();
+            Genre = new Genre(); // Создаём объект жанра перед привязкой
+            DataContext = Genre; // Привязываем DataContext к объекту жанра
         }
-            
-        DialogResult = true;
-        Close();
+
+        public Genre Genre { get; set; }
+
+        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(Genre.GenreName))
+            {
+                MessageBox.Show("Введите название жанра!");
+                return;
+            }
+
+            DialogResult = true;
+            Close();
+        }
     }
 }
