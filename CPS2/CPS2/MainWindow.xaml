@@ -36,13 +36,26 @@
                         <EventSetter Event="DragOver" Handler="TreeViewItem_DragOver"/>
                         <EventSetter Event="Drop" Handler="TreeViewItem_Drop"/>
                         <Setter Property="AllowDrop" Value="True"/>
+                        <Setter Property="IsExpanded" Value="True"/>
+                        <Setter Property="RenderTransform">
+                            <Setter.Value>
+                                <TranslateTransform X="0" Y="0"/>
+                            </Setter.Value>
+                        </Setter>
                         <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger Property="DragDrop.IsDragOver" Value="True">
                                 <Setter Property="Background" Value="#CCE8FF"/>
+                                <Setter Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TranslateTransform X="2" Y="2"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="Transparent"/>
                             </Trigger>
                         </Style.Triggers>
                     </Style>
-
                 </TreeView.Resources>
                 
                 <TreeView.ContextMenu>

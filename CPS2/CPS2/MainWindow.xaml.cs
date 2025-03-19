@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Collections.ObjectModel;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -32,18 +33,20 @@ namespace CPS2
 
         private void LoadData()
         {
+            // Загружаем все данные одним запросом с включением связанных сущностей
             _dbContext.Genres
                 .Include(g => g.Series)
                 .ThenInclude(s => s.Books)
                 .Load();
 
+            // Устанавливаем источник данных для TreeView
             HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
 
-            // Добавляем обработчики к каждому TreeViewItem
+            // Добавляем обработчики для каждого элемента дерева
             AddEventHandlers(HierarchyTreeView);
         }
 
-        // Рекурсивно добавляет обработчики ко всем элементам дерева
+        // Рекурсивно добавляем обработчики ко всем элементам дерева
         private void AddEventHandlers(ItemsControl parent)
         {
             foreach (var item in parent.Items)
@@ -52,12 +55,18 @@ namespace CPS2
                 {
                     treeViewItem.PreviewMouseMove += TreeViewItem_PreviewMouseMove;
                     treeViewItem.Drop += TreeViewItem_Drop;
-                    treeViewItem.DragOver += TreeViewItem_DragOver; // Добавьте эту строку
+                    treeViewItem.DragOver += TreeViewItem_DragOver;
                     treeViewItem.AllowDrop = true;
+                    treeViewItem.IsExpanded = true;
 
-                    // Рекурсия для всех типов
-                    if (item is Genre || item is Series)
+                    if (item is Genre genre)
                     {
+                        // Рекурсивная обработка для серий
+                        AddEventHandlers(treeViewItem);
+                    }
+                    else if (item is Series series)
+                    {
+                        // Рекурсивная обработка для книг
                         AddEventHandlers(treeViewItem);
                     }
                 }
@@ -80,26 +89,6 @@ namespace CPS2
             Application.Current.Shutdown();
         }
 
-        private void CreateSampleData()
-        {
-            using var db = new AppDbContext();
-        
-            var genre = new Genre { GenreName = "Фантастика" };
-            var series = new Series { SeriesName = "Основание", Genre = genre };
-            var book = new Book { 
-                Title = "Основание", 
-                PublicationYear = 1951, 
-                Description = "Классика научной фантастики", 
-                Series = series 
-            };
-
-            db.Genres.Add(genre);
-            db.Series.Add(series);
-            db.Books.Add(book);
-            db.SaveChanges();
-        }
-
-
         #region Обработчики контекстного меню
 
         // Добавление жанра
@@ -112,7 +101,7 @@ namespace CPS2
                 _dbContext.Genres.Add(dialog.Genre);
                 _dbContext.SaveChanges();
                 // Обновление дерева без перезагрузки всех данных
-                HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
+                UpdateTreeViewItem(dialog.Genre);
             }
         }
 
@@ -129,7 +118,7 @@ namespace CPS2
                     db.Series.Add(dialog.Series);
                     db.SaveChanges();
                     // Обновление дерева без перезагрузки всех данных
-                    LoadData();
+                    UpdateTreeViewItem(dialog.Series);
                 }
             }
         }
@@ -147,10 +136,10 @@ namespace CPS2
                     db.Books.Add(dialog.Book);
                     db.SaveChanges();
                     // Обновление дерева без перезагрузки всех данных
-                    LoadData();
+                    UpdateTreeViewItem(dialog.Book);
                 }
             }
-        }
+        }   
 
         // Удаление выбранного элемента
         private void DeleteItem_Click(object sender, RoutedEventArgs e)
@@ -183,7 +172,6 @@ namespace CPS2
             LoadData();  // Перегружаем данные, чтобы TreeView обновился
         }
 
-
         // Редактирование выбранного элемента
         private void EditItem_Click(object sender, RoutedEventArgs e)
         {
@@ -200,7 +188,7 @@ namespace CPS2
                         db.Genres.Update(genre);
                         db.SaveChanges();
                         // Обновление дерева без перезагрузки всех данных
-                        LoadData();
+                        UpdateTreeViewItem(genre);
                     }
                     break;
 
@@ -212,7 +200,7 @@ namespace CPS2
                         db.Series.Update(series);
                         db.SaveChanges();
                         // Обновление дерева без перезагрузки всех данных
-                        LoadData();
+                        UpdateTreeViewItem(series);
                     }
                     break;
 
@@ -224,10 +212,53 @@ namespace CPS2
                         db.Books.Update(book);
                         db.SaveChanges();
                         // Обновление дерева без перезагрузки всех данных
-                        LoadData();
+                        UpdateTreeViewItem(book);
                     }
                     break;
             }
+        }
+        
+        private void UpdateTreeViewItem(object updatedItem)
+        {
+            var items = HierarchyTreeView.ItemsSource as ObservableCollection<Genre>;
+
+            if (updatedItem is Genre updatedGenre)
+            {
+                var existingGenre = items.FirstOrDefault(g => g.Id == updatedGenre.Id);
+                if (existingGenre != null)
+                {
+                    var index = items.IndexOf(existingGenre);
+                    items.RemoveAt(index);
+                    items.Insert(index, updatedGenre);
+                }
+                else
+                {
+                    items.Add(updatedGenre);
+                }
+            }
+            else if (updatedItem is Series updatedSeries)
+            {
+                var parentGenre = items.FirstOrDefault(g => g.Series.Any(s => s.Id == updatedSeries.Id));
+                if (parentGenre != null)
+                {
+                    parentGenre.Series.Remove(updatedSeries);
+                    var newParent = items.FirstOrDefault(g => g.Id == updatedSeries.GenreId);
+                    newParent?.Series.Add(updatedSeries);
+                }
+            }
+            else if (updatedItem is Book updatedBook)
+            {
+                var parentSeries = items.SelectMany(g => g.Series)
+                    .FirstOrDefault(s => s.Books.Any(b => b.Id == updatedBook.Id));
+                parentSeries?.Books.Remove(updatedBook);
+                var newParentSeries = items.SelectMany(g => g.Series)
+                    .FirstOrDefault(s => s.Id == updatedBook.SeriesId);
+                newParentSeries?.Books.Add(updatedBook);
+            }
+
+            // Принудительное обновление дерева
+            HierarchyTreeView.Items.Refresh();
+            CommandManager.InvalidateRequerySuggested();
         }
         
         private void HierarchyTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -249,7 +280,6 @@ namespace CPS2
             }
         }
 
-
         #endregion
 
         #region Drag&Drop
@@ -259,17 +289,17 @@ namespace CPS2
 
         private void TreeViewItem_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed && 
-                sender is TreeViewItem item)
+            if (e.LeftButton == MouseButtonState.Pressed && sender is TreeViewItem item)
             {
-                // Для книг
+                // Убеждаемся, что элемент развернут
+                item.IsExpanded = true;
+        
                 if (item.DataContext is Book book)
                 {
                     _draggedItem = book;
                     DragDrop.DoDragDrop(item, new DataObject(typeof(Book), book), DragDropEffects.Move);
                     e.Handled = true;
                 }
-                // Для серий (новый блок)
                 else if (item.DataContext is Series series)
                 {
                     _draggedItem = series;
@@ -294,6 +324,7 @@ namespace CPS2
             {
                 e.Effects = DragDropEffects.None;
             }
+
             e.Handled = true;
         }
 
@@ -301,16 +332,15 @@ namespace CPS2
         {
             var targetItem = sender as TreeViewItem;
             var target = targetItem?.DataContext;
-    
+
             if (!CanDrop(_draggedItem, target))
             {
-                if(targetItem != null) targetItem.Background = Brushes.Transparent;
+                if (targetItem != null) targetItem.Background = Brushes.Transparent;
                 return;
             }
 
             try
             {
-                // Обработка для книг
                 if (_draggedItem is Book draggedBook)
                 {
                     if (target is Series targetSeries)
@@ -321,9 +351,11 @@ namespace CPS2
                         draggedBook.Series = targetSeries;
                         draggedBook.SeriesId = targetSeries.Id;
                         targetSeries.Books.Add(draggedBook);
+
+                        UpdateTreeViewItem(targetSeries);
+                        UpdateTreeViewItem(oldSeries);
                     }
                 }
-                // Обработка для серий (новый блок)
                 else if (_draggedItem is Series draggedSeries)
                 {
                     if (target is Genre targetGenre)
@@ -334,11 +366,17 @@ namespace CPS2
                         draggedSeries.Genre = targetGenre;
                         draggedSeries.GenreId = targetGenre.Id;
                         targetGenre.Series.Add(draggedSeries);
+
+                        UpdateTreeViewItem(oldGenre);
+                        UpdateTreeViewItem(targetGenre);
                     }
                 }
 
                 _dbContext.SaveChanges();
-                _dbContext.ChangeTracker.Entries().Where(e => e.Entity != null).ToList().ForEach(e => e.Reload());
+                _dbContext.ChangeTracker.Entries()
+                    .Where(entry => entry.Entity != null)
+                    .ToList()
+                    .ForEach(entry => entry.Reload());
             }
             catch (Exception ex)
             {
@@ -351,10 +389,10 @@ namespace CPS2
             _draggedItem = null;
             e.Handled = true;
         }
-        
+
         private bool CanDrop(object source, object target)
         {
-            return (source is Book && target is Series) || 
+            return (source is Book && target is Series) ||
                    (source is Series && target is Genre);
         }
         
