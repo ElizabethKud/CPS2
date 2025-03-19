@@ -24,11 +24,11 @@
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
-            <TreeView x:Name="HierarchyTreeView" Grid.Column="0" Margin="10"
-                      Drop="TreeViewItem_Drop" 
+            <TreeView x:Name="HierarchyTreeView" 
                       AllowDrop="True"
-                      PreviewMouseRightButtonDown="TreeView_PreviewMouseRightButtonDown"
-                      SelectedItemChanged="HierarchyTreeView_SelectedItemChanged">
+                      PreviewMouseMove="TreeViewItem_PreviewMouseMove"
+                      Drop="TreeViewItem_Drop"
+                      DragOver="TreeViewItem_DragOver">
                 
                 <TreeView.Resources>
                     <Style TargetType="{x:Type TreeViewItem}">

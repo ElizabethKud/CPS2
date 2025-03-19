@@ -238,38 +238,29 @@ namespace CPS2
 
         #region Drag&Drop
 
-        // Обработчик перетаскивания элементов
         private object _draggedItem;
 
-        // Обработчик перетаскивания элементов (книги и серии)
         private void TreeViewItem_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed && sender is TreeViewItem item)
+            if (e.LeftButton == MouseButtonState.Pressed)
             {
-                if (item.DataContext is Book book)
+                // Получаем реальный источник перетаскивания
+                var sourceItem = FindParent<TreeViewItem>((DependencyObject)e.OriginalSource);
+                if (sourceItem != null && (sourceItem.DataContext is Book || sourceItem.DataContext is Series))
                 {
-                    _draggedItem = book;
-                    DragDrop.DoDragDrop(item, new DataObject(typeof(Book), book), DragDropEffects.Move);
-                    e.Handled = true;
-                }
-                else if (item.DataContext is Series series)
-                {
-                    _draggedItem = series;
-                    DragDrop.DoDragDrop(item, new DataObject(typeof(Series), series), DragDropEffects.Move);
+                    _draggedItem = sourceItem.DataContext;
+                    DragDrop.DoDragDrop(sourceItem, new DataObject(_draggedItem.GetType(), _draggedItem), DragDropEffects.Move);
                     e.Handled = true;
                 }
             }
         }
 
-        // Обработка перетаскивания
         private void TreeViewItem_DragOver(object sender, DragEventArgs e)
         {
-            var targetItem = sender as TreeViewItem;
-            var sourceData = _draggedItem;
-            var targetData = targetItem?.DataContext;
+            var targetItem = FindParent<TreeViewItem>((DependencyObject)e.OriginalSource);
+            var target = targetItem?.DataContext;
 
-            // Проверка возможности переноса
-            if (CanDrop(sourceData, targetData))
+            if (CanDrop(_draggedItem, target))
             {
                 e.Effects = DragDropEffects.Move;
                 targetItem.Background = Brushes.LightBlue;
@@ -278,68 +269,36 @@ namespace CPS2
             {
                 e.Effects = DragDropEffects.None;
             }
-
             e.Handled = true;
         }
 
-        // Перемещение элемента в новую категорию
         private void TreeViewItem_Drop(object sender, DragEventArgs e)
         {
-            var treeViewItem = sender as TreeViewItem;
-            var target = treeViewItem?.DataContext;
-
-            if (!CanDrop(_draggedItem, target))
-            {
-                if (treeViewItem != null) treeViewItem.Background = Brushes.Transparent;
-                return;
-            }
+            var targetItem = FindParent<TreeViewItem>((DependencyObject)e.OriginalSource);
+            var target = targetItem?.DataContext;
 
             try
             {
-                if (_draggedItem is Book draggedBook)
+                if (CanDrop(_draggedItem, target))
                 {
-                    if (target is Series targetSeries)
+                    if (_draggedItem is Book book)
                     {
-                        // Получаем старую серию
-                        var oldSeries = draggedBook.Series;
-
-                        if (oldSeries != null)
+                        var targetSeries = GetTargetSeries(book, target);
+                        if (targetSeries != null && book.SeriesId != targetSeries.Id)
                         {
-                            // Удаляем книгу из старой серии
-                            oldSeries.Books.Remove(draggedBook);
+                            book.SeriesId = targetSeries.Id;
+                            _dbContext.SaveChanges();
+                            LoadData();
                         }
-
-                        // Обновляем связь через EF Core
-                        draggedBook.SeriesId = targetSeries.Id;
-
-                        // Добавляем книгу в новую серию
-                        targetSeries.Books.Add(draggedBook);
-
-                        _dbContext.Entry(draggedBook).State = EntityState.Modified;
-                        _dbContext.SaveChanges();
                     }
-                }
-                else if (_draggedItem is Series draggedSeries)
-                {
-                    if (target is Genre targetGenre)
+                    else if (_draggedItem is Series series)
                     {
-                        // Получаем старый жанр
-                        var oldGenre = draggedSeries.Genre;
-
-                        if (oldGenre != null)
+                        if (target is Genre genre && series.GenreId != genre.Id)
                         {
-                            // Удаляем серию из старого жанра
-                            oldGenre.Series.Remove(draggedSeries);
+                            series.GenreId = genre.Id;
+                            _dbContext.SaveChanges();
+                            LoadData();
                         }
-
-                        // Обновляем связь через EF Core
-                        draggedSeries.GenreId = targetGenre.Id;
-
-                        // Добавляем серию в новый жанр
-                        targetGenre.Series.Add(draggedSeries);
-
-                        _dbContext.Entry(draggedSeries).State = EntityState.Modified;
-                        _dbContext.SaveChanges();
                     }
                 }
             }
@@ -349,32 +308,42 @@ namespace CPS2
             }
             finally
             {
-                if (treeViewItem != null)
-                    treeViewItem.Background = Brushes.Transparent;
-
+                if (targetItem != null) targetItem.Background = Brushes.Transparent;
                 _draggedItem = null;
                 e.Handled = true;
             }
         }
 
-        // Функция проверки возможности перетаскивания
         private bool CanDrop(object source, object target)
         {
-            if (source is Book book && target is Series targetSeries)
+            return source switch
             {
-                // Разрешаем перенос книги в другую серию
-                return book.Series?.Id != targetSeries.Id;
-            }
-
-            if (source is Series series && target is Genre targetGenre)
-            {
-                // Разрешаем перенос серии в другой жанр
-                return series.Genre?.Id != targetGenre.Id;
-            }
-
-            return false;
+                Book book => GetTargetSeries(book, target) != null,
+                Series series => target is Genre,
+                _ => false
+            };
         }
-        
+
+        private Series GetTargetSeries(Book book, object target)
+        {
+            return target switch
+            {
+                Series s => s,
+                Book b => b.Series,
+                _ => null
+            };
+        }
+
+        private static T FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            while (child != null)
+            {
+                if (child is T parent) return parent;
+                child = VisualTreeHelper.GetParent(child);
+            }
+            return null;
+        }
+
         #endregion
         
         protected override void OnClosed(EventArgs e)
