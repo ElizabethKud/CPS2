@@ -19,14 +19,20 @@ public partial class BookEditWindow : Window
             MessageBox.Show("Введите название книги");
             return;
         }
-            
+        if (string.IsNullOrWhiteSpace(Book.Author)) // Проверка на наличие автора
+        {
+            MessageBox.Show("Введите автора книги");
+            return;
+        }
+
         if (Book.PublicationYear < 1 || Book.PublicationYear > DateTime.Now.Year)
         {
             MessageBox.Show("Некорректный год издания");
             return;
         }
-            
+
         DialogResult = true;
         Close();
     }
+
 }

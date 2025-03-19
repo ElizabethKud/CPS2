@@ -5,8 +5,14 @@
     <StackPanel Margin="10">
         <TextBlock Text="Название книги:" FontWeight="Bold"/>
         <TextBlock Text="{Binding Title}" FontSize="16"/>
+        
+        <TextBlock Text="Год издания:" FontWeight="Bold" Margin="0,10,0,0"/>
+        <TextBlock Text="{Binding PublicationYear}" FontSize="16"/>
 
         <TextBlock Text="Автор:" FontWeight="Bold" Margin="0,10,0,0"/>
         <TextBlock Text="{Binding Author}" FontSize="16"/>
+        
+        <TextBlock Text="Описание:" FontWeight="Bold" Margin="0,10,0,0"/>
+        <TextBlock Text="{Binding Description}" FontSize="16"/>
     </StackPanel>
 </Page>

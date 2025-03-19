@@ -59,39 +59,47 @@ namespace CPS2
     [Table("books")]
     public class Book : INotifyPropertyChanged
     {
+        private string? _author;
         private string? _title;
         private string? _description;
         private int _publicationYear;
-        
+
         [Key, Column("id")]
         public int Id { get; set; }
-        
+
         [Column("title")]
         public string? Title
         {
             get => _title;
             set { _title = value; OnPropertyChanged(); }
         }
-        
+
+        [Column("author")] // Добавьте поле для автора
+        public string? Author
+        {
+            get => _author;
+            set { _author = value; OnPropertyChanged(); }
+        }
+
         [Column("series_id"), ForeignKey("Series")]
         public int SeriesId { get; set; }
-        
+
         [Column("publication_year")]
         public int PublicationYear
         {
             get => _publicationYear;
             set { _publicationYear = value; OnPropertyChanged(); }
         }
-        
+
         [Column("description")]
         public string? Description
         {
             get => _description;
             set { _description = value; OnPropertyChanged(); }
         }
-        
+
         public virtual Series? Series { get; set; }
-        
+
         public event PropertyChangedEventHandler? PropertyChanged;
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
