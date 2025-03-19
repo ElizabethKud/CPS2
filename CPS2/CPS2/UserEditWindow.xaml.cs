@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using BCrypt.Net;
 
@@ -7,6 +8,7 @@ namespace CPS2
     public partial class UserEditWindow : Window
     {
         public User User { get; set; } = new User();
+        public ObservableCollection<string> Roles { get; set; } = new ObservableCollection<string> { "admin", "user" };
 
         public UserEditWindow()
         {
@@ -16,34 +18,39 @@ namespace CPS2
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            if (User == null)
+            {
+                MessageBox.Show("Ошибка: пользователь не задан!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            Console.WriteLine($"Редактируемый пользователь: {User.Username}, Роль: {User.Role}");
+
             if (string.IsNullOrWhiteSpace(User.Username))
             {
                 MessageBox.Show("Введите логин!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            // Проверка на уникальность логина
             using (var db = new AppDbContext())
             {
-                if (db.Users.Any(u => u.Username == User.Username && u.Id != User.Id)) // исключаем текущего пользователя при редактировании
+                if (db.Users.Any(u => u.Username == User.Username && u.Id != User.Id))
                 {
                     MessageBox.Show("Пользователь с таким логином уже существует!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
             }
 
-            // Если пароль не пустой, то хешируем его
-            if (!string.IsNullOrEmpty(PasswordBox.Password))
+            Console.WriteLine($"Проверка роли перед сохранением: '{User.Role}'");
+            if (string.IsNullOrWhiteSpace(User.Role) || (User.Role != "admin" && User.Role != "user"))
             {
-                // Генерация соли и хеширование пароля происходит внутри этого метода
-                User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password);
+                MessageBox.Show("Некорректное значение роли!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
 
-            // Если пароль пустой, сохраняем старый хеш (в случае редактирования без изменения пароля)
-            if (string.IsNullOrEmpty(PasswordBox.Password) && User.PasswordHash == null)
+            if (!string.IsNullOrEmpty(PasswordBox.Password))
             {
-                MessageBox.Show("Пароль не может быть пустым!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password);
             }
 
             DialogResult = true;
