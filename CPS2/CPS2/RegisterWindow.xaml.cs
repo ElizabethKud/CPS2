@@ -1,4 +1,4 @@
-﻿using BCrypt.Net;
+﻿﻿using BCrypt.Net;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
