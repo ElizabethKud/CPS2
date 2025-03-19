@@ -227,10 +227,18 @@ namespace CPS2
         [Column("registration_date")]
         public DateTime RegistrationDate
         {
-            get => _registrationDate.ToUniversalTime();
+            get => _registrationDate; 
             set
             {
-                _registrationDate = value.ToUniversalTime();
+                // Проверка на некорректные значения
+                if (value == DateTime.MinValue || value == DateTime.MaxValue)
+                {
+                    _registrationDate = DateTime.UtcNow; // Устанавливаем текущую дату в случае некорректного значения
+                }
+                else
+                {
+                    _registrationDate = value;
+                }
                 OnPropertyChanged();
             }
         }

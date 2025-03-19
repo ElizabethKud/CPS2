@@ -22,11 +22,7 @@ CREATE TABLE IF NOT EXISTS books (
     description TEXT
 );
 ALTER TABLE books
-ADD COLUMN author VARCHAR(255);
--- Вставка новой книги с автором
-INSERT INTO books (title, series_id, publication_year, description, author)
-VALUES ('Название книги', 1, 2023, 'Описание книги', 'Автор книги');
-
+ADD COLUMN IF NOT EXISTS author VARCHAR(255);
 
 -- Создание таблицы users, если она не существует
 CREATE TABLE IF NOT EXISTS users (

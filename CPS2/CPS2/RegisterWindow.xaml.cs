@@ -43,11 +43,12 @@ namespace CPS2
             var newUser = new User
             {
                 Username = username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password), // Соль включена внутрь
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
                 Role = "user",
                 IsActive = true,
-                RegistrationDate = DateTime.UtcNow
+                RegistrationDate = DateTime.UtcNow // Устанавливаем текущую дату UTC
             };
+
 
             db.Users.Add(newUser);
             db.SaveChanges();

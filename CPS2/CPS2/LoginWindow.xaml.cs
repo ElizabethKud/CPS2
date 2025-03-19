@@ -19,22 +19,27 @@ namespace CPS2
             if (user != null && BCrypt.Net.BCrypt.Verify(PasswordBox.Password, user.PasswordHash))
             {
                 // Проверяем, не прошло ли более недели с последнего входа
-                if (user.LastLogin != null && user.LastLogin < DateTime.UtcNow.AddDays(-7))
+                if (user.LastLogin != null && user.LastLogin < DateTime.UtcNow.AddDays(-7) 
+                                           && user.RegistrationDate < DateTime.UtcNow.AddMinutes(-5))  // Проверка на новую регистрацию
                 {
-                    // Если прошло больше недели, делаем пользователя неактивным
+                    // Если прошло больше недели с последнего входа, и пользователь не новый, делаем его неактивным
                     user.IsActive = false;
                     db.SaveChanges();
                 }
 
-                // Обновляем дату последнего входа
-                user.LastLogin = DateTime.UtcNow;
-                db.SaveChanges();
 
-                // Если пользователь активен, открываем главное окно
+                // Если пользователь не активен, выводим сообщение "С возвращением!"
                 if (!user.IsActive)
                 {
                     MessageBox.Show("Вы не заходили в приложение более недели. С возвращением!");
                 }
+
+                // Обновляем дату последнего входа и делаем пользователя активным
+                user.LastLogin = DateTime.UtcNow;
+                user.IsActive = true; // Помечаем пользователя как активного
+                db.SaveChanges();
+
+                // Открываем главное окно
                 var mainWindow = new MainWindow(user);
                 mainWindow.Show();
                 this.Close();
@@ -44,7 +49,6 @@ namespace CPS2
                 MessageBox.Show("Ошибка авторизации!");
             }
         }
-
 
         private void RegisterButton_Click(object sender, RoutedEventArgs e)
         {
