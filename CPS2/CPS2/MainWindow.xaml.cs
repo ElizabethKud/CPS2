@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace CPS2
 {
@@ -37,8 +38,32 @@ namespace CPS2
                 .Load();
 
             HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
+
+            // Добавляем обработчики к каждому TreeViewItem
+            AddEventHandlers(HierarchyTreeView);
         }
 
+        // Рекурсивно добавляет обработчики ко всем элементам дерева
+        private void AddEventHandlers(ItemsControl parent)
+        {
+            foreach (var item in parent.Items)
+            {
+                if (parent.ItemContainerGenerator.ContainerFromItem(item) is TreeViewItem treeViewItem)
+                {
+                    treeViewItem.PreviewMouseMove += TreeViewItem_PreviewMouseMove;
+                    treeViewItem.Drop += TreeViewItem_Drop;
+                    treeViewItem.DragOver += TreeViewItem_DragOver; // Добавьте эту строку
+                    treeViewItem.AllowDrop = true;
+
+                    // Рекурсия для всех типов
+                    if (item is Genre || item is Series)
+                    {
+                        AddEventHandlers(treeViewItem);
+                    }
+                }
+            }
+        }
+        
         private void TreeView_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             var treeViewItem = ((DependencyObject)e.OriginalSource).GetSelfAndAncestors<TreeViewItem>().FirstOrDefault();
@@ -230,47 +255,109 @@ namespace CPS2
         #region Drag&Drop
 
         // Обработчик перетаскивания элементов
+        private object _draggedItem;
+
         private void TreeViewItem_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed && sender is TreeViewItem item)
+            if (e.LeftButton == MouseButtonState.Pressed && 
+                sender is TreeViewItem item)
             {
+                // Для книг
                 if (item.DataContext is Book book)
                 {
-                    DragDrop.DoDragDrop(item, book, DragDropEffects.Move);
+                    _draggedItem = book;
+                    DragDrop.DoDragDrop(item, new DataObject(typeof(Book), book), DragDropEffects.Move);
+                    e.Handled = true;
                 }
+                // Для серий (новый блок)
                 else if (item.DataContext is Series series)
                 {
-                    DragDrop.DoDragDrop(item, series, DragDropEffects.Move);
+                    _draggedItem = series;
+                    DragDrop.DoDragDrop(item, new DataObject(typeof(Series), series), DragDropEffects.Move);
+                    e.Handled = true;
                 }
             }
         }
 
-        // Обработчик отпускания элемента
+        private void TreeViewItem_DragOver(object sender, DragEventArgs e)
+        {
+            var targetItem = sender as TreeViewItem;
+            var sourceData = _draggedItem;
+            var targetData = targetItem?.DataContext;
+
+            if (CanDrop(sourceData, targetData))
+            {
+                e.Effects = DragDropEffects.Move;
+                targetItem.Background = Brushes.LightBlue;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
         private void TreeViewItem_Drop(object sender, DragEventArgs e)
         {
-            if (sender is TreeViewItem targetItem)
+            var targetItem = sender as TreeViewItem;
+            var target = targetItem?.DataContext;
+    
+            if (!CanDrop(_draggedItem, target))
             {
-                using var db = new AppDbContext();
-
-                if (e.Data.GetData(typeof(Book)) is Book draggedBook &&
-                    targetItem.DataContext is Series targetSeries)
-                {
-                    draggedBook.SeriesId = targetSeries.Id;
-                    db.Books.Update(draggedBook);
-                }
-                else if (e.Data.GetData(typeof(Series)) is Series draggedSeries &&
-                         targetItem.DataContext is Genre targetGenre)
-                {
-                    draggedSeries.GenreId = targetGenre.Id;
-                    db.Series.Update(draggedSeries);
-                }
-
-                db.SaveChanges();
-                LoadData();  // Обновляем дерево
+                if(targetItem != null) targetItem.Background = Brushes.Transparent;
+                return;
             }
+
+            try
+            {
+                // Обработка для книг
+                if (_draggedItem is Book draggedBook)
+                {
+                    if (target is Series targetSeries)
+                    {
+                        var oldSeries = draggedBook.Series;
+                        oldSeries?.Books.Remove(draggedBook);
+                
+                        draggedBook.Series = targetSeries;
+                        draggedBook.SeriesId = targetSeries.Id;
+                        targetSeries.Books.Add(draggedBook);
+                    }
+                }
+                // Обработка для серий (новый блок)
+                else if (_draggedItem is Series draggedSeries)
+                {
+                    if (target is Genre targetGenre)
+                    {
+                        var oldGenre = draggedSeries.Genre;
+                        oldGenre?.Series.Remove(draggedSeries);
+                
+                        draggedSeries.Genre = targetGenre;
+                        draggedSeries.GenreId = targetGenre.Id;
+                        targetGenre.Series.Add(draggedSeries);
+                    }
+                }
+
+                _dbContext.SaveChanges();
+                _dbContext.ChangeTracker.Entries().Where(e => e.Entity != null).ToList().ForEach(e => e.Reload());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка: {ex.Message}");
+            }
+    
+            if (targetItem != null)
+                targetItem.Background = Brushes.Transparent;
+    
+            _draggedItem = null;
+            e.Handled = true;
         }
-
-
+        
+        private bool CanDrop(object source, object target)
+        {
+            return (source is Book && target is Series) || 
+                   (source is Series && target is Genre);
+        }
+        
         #endregion
         
         protected override void OnClosed(EventArgs e)

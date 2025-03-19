@@ -25,8 +25,26 @@
             </Grid.ColumnDefinitions>
 
             <TreeView x:Name="HierarchyTreeView" Grid.Column="0" Margin="5"
+                      Drop="TreeViewItem_Drop" 
+                      AllowDrop="True"
                       PreviewMouseRightButtonDown="TreeView_PreviewMouseRightButtonDown"
                       SelectedItemChanged="HierarchyTreeView_SelectedItemChanged">
+                
+                <TreeView.Resources>
+                    <Style TargetType="{x:Type TreeViewItem}">
+                        <EventSetter Event="PreviewMouseMove" Handler="TreeViewItem_PreviewMouseMove"/>
+                        <EventSetter Event="DragOver" Handler="TreeViewItem_DragOver"/>
+                        <EventSetter Event="Drop" Handler="TreeViewItem_Drop"/>
+                        <Setter Property="AllowDrop" Value="True"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#CCE8FF"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+
+                </TreeView.Resources>
+                
                 <TreeView.ContextMenu>
                     <ContextMenu x:Name="TreeContextMenu">
                         <MenuItem Header="Добавить жанр" Click="AddGenre_Click"/>
