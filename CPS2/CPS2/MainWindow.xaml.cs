@@ -131,22 +131,33 @@ namespace CPS2
         private void DeleteItem_Click(object sender, RoutedEventArgs e)
         {
             var selectedItem = HierarchyTreeView.SelectedItem;
+            if (selectedItem == null) return;
+
             switch (selectedItem)
             {
                 case Genre genre:
+                    _dbContext.Series.RemoveRange(genre.Series);  // Удаляем все серии этого жанра
+                    foreach (var series in genre.Series)
+                    {
+                        _dbContext.Books.RemoveRange(series.Books);  // Удаляем все книги в этих сериях
+                    }
                     _dbContext.Genres.Remove(genre);
                     break;
+
                 case Series series:
+                    _dbContext.Books.RemoveRange(series.Books);  // Удаляем книги этой серии
                     _dbContext.Series.Remove(series);
                     break;
+
                 case Book book:
                     _dbContext.Books.Remove(book);
                     break;
             }
+
             _dbContext.SaveChanges();
-            // Обновление дерева без перезагрузки всех данных
-            LoadData();
+            LoadData();  // Перегружаем данные, чтобы TreeView обновился
         }
+
 
         // Редактирование выбранного элемента
         private void EditItem_Click(object sender, RoutedEventArgs e)
@@ -221,28 +232,44 @@ namespace CPS2
         // Обработчик перетаскивания элементов
         private void TreeViewItem_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed &&
-                sender is TreeViewItem item &&
-                item.DataContext is Book book)
+            if (e.LeftButton == MouseButtonState.Pressed && sender is TreeViewItem item)
             {
-                DragDrop.DoDragDrop(item, book, DragDropEffects.Move);
+                if (item.DataContext is Book book)
+                {
+                    DragDrop.DoDragDrop(item, book, DragDropEffects.Move);
+                }
+                else if (item.DataContext is Series series)
+                {
+                    DragDrop.DoDragDrop(item, series, DragDropEffects.Move);
+                }
             }
         }
 
         // Обработчик отпускания элемента
         private void TreeViewItem_Drop(object sender, DragEventArgs e)
         {
-            if (e.Data.GetData(typeof(Book)) is Book draggedBook &&
-                ((TreeViewItem)sender).DataContext is Series targetSeries)
+            if (sender is TreeViewItem targetItem)
             {
                 using var db = new AppDbContext();
-                draggedBook.SeriesId = targetSeries.Id;
-                db.Books.Update(draggedBook);
+
+                if (e.Data.GetData(typeof(Book)) is Book draggedBook &&
+                    targetItem.DataContext is Series targetSeries)
+                {
+                    draggedBook.SeriesId = targetSeries.Id;
+                    db.Books.Update(draggedBook);
+                }
+                else if (e.Data.GetData(typeof(Series)) is Series draggedSeries &&
+                         targetItem.DataContext is Genre targetGenre)
+                {
+                    draggedSeries.GenreId = targetGenre.Id;
+                    db.Series.Update(draggedSeries);
+                }
+
                 db.SaveChanges();
-                // Обновление дерева без перезагрузки всех данных
-                LoadData();
+                LoadData();  // Обновляем дерево
             }
         }
+
 
         #endregion
         
