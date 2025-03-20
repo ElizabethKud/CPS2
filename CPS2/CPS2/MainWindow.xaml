@@ -49,6 +49,7 @@
                       PreviewMouseMove="TreeViewItem_PreviewMouseMove"
                       Drop="TreeViewItem_Drop"
                       DragOver="TreeViewItem_DragOver"
+                      DragLeave="TreeViewItem_DragLeave"
                       SelectedItemChanged="HierarchyTreeView_SelectedItemChanged">
                 
                 <TreeView.Resources>

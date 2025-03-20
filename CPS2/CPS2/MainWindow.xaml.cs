@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -113,7 +114,7 @@ namespace CPS2
                     db.Series.Add(dialog.Series);
                     db.SaveChanges();
                     // Обновление дерева без перезагрузки всех данных
-                    LoadData();
+                    CollectionViewSource.GetDefaultView(HierarchyTreeView.ItemsSource).Refresh();
                 }
             }
         }
@@ -131,7 +132,7 @@ namespace CPS2
                     db.Books.Add(dialog.Book);
                     db.SaveChanges();
                     // Обновление дерева без перезагрузки всех данных
-                    LoadData();
+                    CollectionViewSource.GetDefaultView(HierarchyTreeView.ItemsSource).Refresh();
                 }
             }
         }
@@ -313,6 +314,13 @@ namespace CPS2
                 e.Handled = true;
             }
         }
+        
+        private void TreeViewItem_DragLeave(object sender, DragEventArgs e)
+        {
+            var targetItem = FindParent<TreeViewItem>((DependencyObject)e.OriginalSource);
+            if (targetItem != null) targetItem.Background = Brushes.Transparent;
+        }
+
 
         private bool CanDrop(object source, object target)
         {
