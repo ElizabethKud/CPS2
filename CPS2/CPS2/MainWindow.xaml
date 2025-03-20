@@ -48,7 +48,8 @@
                       AllowDrop="True"
                       PreviewMouseMove="TreeViewItem_PreviewMouseMove"
                       Drop="TreeViewItem_Drop"
-                      DragOver="TreeViewItem_DragOver">
+                      DragOver="TreeViewItem_DragOver"
+                      SelectedItemChanged="HierarchyTreeView_SelectedItemChanged">
                 
                 <TreeView.Resources>
                     <Style TargetType="{x:Type TreeViewItem}">
