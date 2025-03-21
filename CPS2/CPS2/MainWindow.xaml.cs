@@ -27,7 +27,6 @@ namespace CPS2
             if (_currentUser.Role != "admin")
             {
                 AdminMenu.Visibility = Visibility.Collapsed;
-                TreeContextMenu.Visibility = Visibility.Collapsed; // Скрываем меню полностью
             }
             else
             {
@@ -109,12 +108,15 @@ namespace CPS2
                 var dialog = new SeriesEditWindow();
                 if (dialog.ShowDialog() == true)
                 {
-                    using var db = new AppDbContext();
+                    // Используем основной контекст
                     dialog.Series.GenreId = selectedGenre.Id;
-                    db.Series.Add(dialog.Series);
-                    db.SaveChanges();
-                    // Обновление дерева без перезагрузки всех данных
-                    CollectionViewSource.GetDefaultView(HierarchyTreeView.ItemsSource).Refresh();
+                    _dbContext.Series.Add(dialog.Series);
+                    _dbContext.SaveChanges();
+            
+                    // Обновляем только нужный жанр
+                    selectedGenre.Series.Add(dialog.Series);
+                    var genreItem = FindTreeViewItem(selectedGenre);
+                    genreItem?.Items.Refresh();
                 }
             }
         }
@@ -135,6 +137,25 @@ namespace CPS2
                     CollectionViewSource.GetDefaultView(HierarchyTreeView.ItemsSource).Refresh();
                 }
             }
+        }
+        
+        private TreeViewItem FindTreeViewItem(object item)
+        {
+            var container = HierarchyTreeView.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
+            if (container != null) return container;
+
+            foreach (var genre in _dbContext.Genres.Local)
+            {
+                container = HierarchyTreeView.ItemContainerGenerator.ContainerFromItem(genre) as TreeViewItem;
+                if (container == null) continue;
+
+                foreach (var series in genre.Series)
+                {
+                    var seriesContainer = container.ItemContainerGenerator.ContainerFromItem(series) as TreeViewItem;
+                    if (seriesContainer != null && series == item) return seriesContainer;
+                }
+            }
+            return null;
         }
 
         // Удаление выбранного элемента
@@ -181,11 +202,8 @@ namespace CPS2
                     var genreDialog = new GenreEditWindow { Genre = genre };
                     if (genreDialog.ShowDialog() == true)
                     {
-                        using var db = new AppDbContext();
-                        db.Genres.Update(genre);
-                        db.SaveChanges();
-                        // Обновление дерева без перезагрузки всех данных
-                        LoadData();
+                        _dbContext.SaveChanges();
+                        FindTreeViewItem(genre)?.Items.Refresh();
                     }
                     break;
 
@@ -193,11 +211,8 @@ namespace CPS2
                     var seriesDialog = new SeriesEditWindow { Series = series };
                     if (seriesDialog.ShowDialog() == true)
                     {
-                        using var db = new AppDbContext();
-                        db.Series.Update(series);
-                        db.SaveChanges();
-                        // Обновление дерева без перезагрузки всех данных
-                        LoadData();
+                        _dbContext.SaveChanges();
+                        FindTreeViewItem(series)?.Items.Refresh();
                     }
                     break;
 
@@ -205,11 +220,8 @@ namespace CPS2
                     var bookDialog = new BookEditWindow { Book = book };
                     if (bookDialog.ShowDialog() == true)
                     {
-                        using var db = new AppDbContext();
-                        db.Books.Update(book);
-                        db.SaveChanges();
-                        // Обновление дерева без перезагрузки всех данных
-                        LoadData();
+                        _dbContext.SaveChanges();
+                        FindTreeViewItem(book)?.Items.Refresh();
                     }
                     break;
             }
@@ -309,16 +321,19 @@ namespace CPS2
             }
             finally
             {
-                if (targetItem != null) targetItem.Background = Brushes.Transparent;
-                _draggedItem = null;
-                e.Handled = true;
+                if (targetItem != null)
+                {
+                    targetItem.Background = Brushes.Transparent;
+                    var parent = FindParent<TreeViewItem>(targetItem.Parent);
+                    parent?.Items.Refresh();
+                }
             }
         }
         
         private void TreeViewItem_DragLeave(object sender, DragEventArgs e)
         {
             var targetItem = FindParent<TreeViewItem>((DependencyObject)e.OriginalSource);
-            if (targetItem != null) targetItem.Background = Brushes.Transparent;
+            targetItem.Background = Brushes.Transparent;
         }
 
 

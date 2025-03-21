@@ -5,5 +5,8 @@
     <StackPanel Margin="10">
         <TextBlock Text="Название серии:" FontWeight="Bold"/>
         <TextBlock Text="{Binding SeriesName}" FontSize="16"/>
+
+        <TextBlock Text="Количество книг в серии:" FontWeight="Bold" Margin="0,10,0,0"/>
+        <TextBlock Text="{Binding BookCount}" FontSize="16"/>
     </StackPanel>
 </Page>

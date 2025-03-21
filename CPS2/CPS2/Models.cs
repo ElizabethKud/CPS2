@@ -84,14 +84,38 @@ namespace CPS2
                 }
             }
         }
+        private ObservableCollection<Book> _books = new();
+        public virtual ObservableCollection<Book> Books
+        {
+            get => _books;
+            set
+            {
+                if (_books != value)
+                {
+                    if (_books != null)
+                        _books.CollectionChanged -= Books_CollectionChanged;
+                    
+                    _books = value;
+                    _books.CollectionChanged += Books_CollectionChanged;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(BookCount));
+                }
+            }
+        }
 
-        public virtual ObservableCollection<Book> Books { get; set; } = new();
+        // Свойство для отображения количества книг в серии
+        public int BookCount => Books.Count;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void Books_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(BookCount));
         }
     }
 
