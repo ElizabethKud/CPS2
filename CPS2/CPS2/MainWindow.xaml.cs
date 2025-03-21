@@ -93,6 +93,21 @@ namespace CPS2
             var dialog = new GenreEditWindow();
             if (dialog.ShowDialog() == true)
             {
+                // Валидация данных перед добавлением
+                if (string.IsNullOrEmpty(dialog.Genre.GenreName))
+                {
+                    MessageBox.Show("Название жанра не может быть пустым!");
+                    return;
+                }
+
+                // Проверка на уникальность названия жанра
+                var existingGenre = _dbContext.Genres.FirstOrDefault(g => g.GenreName == dialog.Genre.GenreName);
+                if (existingGenre != null)
+                {
+                    MessageBox.Show("Жанр с таким названием уже существует!");
+                    return;
+                }
+                
                 _dbContext.Genres.Add(dialog.Genre);
                 _dbContext.SaveChanges();
                 // Обновление дерева без перезагрузки всех данных
@@ -108,6 +123,20 @@ namespace CPS2
                 var dialog = new SeriesEditWindow();
                 if (dialog.ShowDialog() == true)
                 {
+                    if (string.IsNullOrEmpty(dialog.Series.SeriesName))
+                    {
+                        MessageBox.Show("Название серии не может быть пустым!");
+                        return;
+                    }
+
+                    // Проверка на уникальность названия серии
+                    var existingSeries = _dbContext.Series.FirstOrDefault(s => s.SeriesName == dialog.Series.SeriesName && s.GenreId == selectedGenre.Id);
+                    if (existingSeries != null)
+                    {
+                        MessageBox.Show("Серия с таким названием уже существует в этом жанре!");
+                        return;
+                    }
+                    
                     // Используем основной контекст
                     dialog.Series.GenreId = selectedGenre.Id;
                     _dbContext.Series.Add(dialog.Series);
@@ -129,6 +158,20 @@ namespace CPS2
                 var dialog = new BookEditWindow();
                 if (dialog.ShowDialog() == true)
                 {
+                    if (string.IsNullOrEmpty(dialog.Book.Title))
+                    {
+                        MessageBox.Show("Название книги не может быть пустым!");
+                        return;
+                    }
+
+                    // Проверка на уникальность названия книги
+                    var existingBook = _dbContext.Books.FirstOrDefault(b => b.Title == dialog.Book.Title && b.SeriesId == selectedSeries.Id);
+                    if (existingBook != null)
+                    {
+                        MessageBox.Show("Книга с таким названием уже существует в этой серии!");
+                        return;
+                    }
+                    
                     using var db = new AppDbContext();
                     dialog.Book.SeriesId = selectedSeries.Id;
                     db.Books.Add(dialog.Book);
