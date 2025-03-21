@@ -17,10 +17,14 @@ namespace CPS2
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Genre>()
+                .HasMany(g => g.Series)
+                .WithOne(s => s.Genre)
+                .OnDelete(DeleteBehavior.Cascade);
+
             modelBuilder.Entity<Series>()
-                .HasOne(s => s.Genre)
-                .WithMany(g => g.Series)
-                .HasForeignKey(s => s.GenreId)
+                .HasMany(s => s.Books)
+                .WithOne(b => b.Series)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Book>()
