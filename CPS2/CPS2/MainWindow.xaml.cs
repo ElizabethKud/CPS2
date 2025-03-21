@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿﻿using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,6 +27,7 @@ namespace CPS2
             if (_currentUser.Role != "admin")
             {
                 AdminMenu.Visibility = Visibility.Collapsed;
+                TreeContextMenu.Visibility = Visibility.Collapsed; // Скрываем меню полностью
             }
             else
             {
@@ -36,43 +37,15 @@ namespace CPS2
 
         private void LoadData()
         {
-            // Сохраняем состояние раскрытия
-            var expanded = new HashSet<object>();
-            SaveExpandedState(HierarchyTreeView.Items, expanded);
+            _dbContext.Genres
+                .Include(g => g.Series)
+                .ThenInclude(s => s.Books)
+                .Load();
 
-            _dbContext.ChangeTracker.Clear();
-            // Убираем явные вызовы Include, так как ленивую загрузку включаем через конфигурацию
-            _dbContext.Genres.Load(); // Загружаем только жанры, серий и книг не будет в памяти сразу
-
-            // Восстанавливаем состояние
             HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
-            RestoreExpandedState(HierarchyTreeView.Items, expanded);
-        }
-        
-        private void SaveExpandedState(ItemCollection items, HashSet<object> expanded)
-        {
-            foreach (var item in items)
-            {
-                var container = HierarchyTreeView.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
-                if (container != null && container.IsExpanded)
-                {
-                    expanded.Add(item);
-                    SaveExpandedState(container.Items, expanded);
-                }
-            }
-        }
 
-        private void RestoreExpandedState(ItemCollection items, HashSet<object> expanded)
-        {
-            foreach (var item in items)
-            {
-                var container = HierarchyTreeView.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
-                if (container != null)
-                {
-                    container.IsExpanded = expanded.Contains(item);
-                    RestoreExpandedState(container.Items, expanded);
-                }
-            }
+            // Добавляем обработчики к каждому TreeViewItem
+            AddEventHandlers(HierarchyTreeView);
         }
 
         // Добавляем обработчики для всех элементов дерева
@@ -121,31 +94,14 @@ namespace CPS2
             var dialog = new GenreEditWindow();
             if (dialog.ShowDialog() == true)
             {
-                // Валидация данных перед добавлением
-                if (string.IsNullOrEmpty(dialog.Genre.GenreName))
-                {
-                    MessageBox.Show("Название жанра не может быть пустым!");
-                    return;
-                }
-
-                // Проверка на уникальность названия жанра
-                var existingGenre = _dbContext.Genres.FirstOrDefault(g => g.GenreName == dialog.Genre.GenreName);
-                if (existingGenre != null)
-                {
-                    MessageBox.Show("Жанр с таким названием уже существует!");
-                    return;
-                }
-
-                // Добавление нового жанра в базу данных
                 _dbContext.Genres.Add(dialog.Genre);
                 _dbContext.SaveChanges();
-
-                // Обновляем только коллекцию жанров
+                // Обновление дерева без перезагрузки всех данных
                 HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
             }
         }
-        
-        // Добавление серии 
+
+        // Добавление серии
         private void AddSeries_Click(object sender, RoutedEventArgs e)
         {
             if (HierarchyTreeView.SelectedItem is Genre selectedGenre)
@@ -153,30 +109,12 @@ namespace CPS2
                 var dialog = new SeriesEditWindow();
                 if (dialog.ShowDialog() == true)
                 {
-                    if (string.IsNullOrEmpty(dialog.Series.SeriesName))
-                    {
-                        MessageBox.Show("Название серии не может быть пустым!");
-                        return; 
-                    }
-
-                    // Проверка на уникальность названия серии
-                    var existingSeries = _dbContext.Series.FirstOrDefault(s => s.SeriesName == dialog.Series.SeriesName && s.GenreId == selectedGenre.Id);
-                    if (existingSeries != null)
-                    {
-                        MessageBox.Show("Серия с таким названием уже существует в этом жанре!");
-                        return;
-                    }
-
+                    using var db = new AppDbContext();
                     dialog.Series.GenreId = selectedGenre.Id;
-                    _dbContext.Series.Add(dialog.Series);
-                    _dbContext.SaveChanges();
-
-                    // Добавление серии в коллекцию жанра
-                    selectedGenre.Series.Add(dialog.Series);
-
-                    // Обновляем только нужный жанр
-                    var genreItem = FindTreeViewItem(selectedGenre);
-                    genreItem?.Items.Refresh();
+                    db.Series.Add(dialog.Series);
+                    db.SaveChanges();
+                    // Обновление дерева без перезагрузки всех данных
+                    CollectionViewSource.GetDefaultView(HierarchyTreeView.ItemsSource).Refresh();
                 }
             }
         }
@@ -189,30 +127,49 @@ namespace CPS2
                 var dialog = new BookEditWindow();
                 if (dialog.ShowDialog() == true)
                 {
-                    if (string.IsNullOrEmpty(dialog.Book.Title))
-                    {
-                        MessageBox.Show("Название книги не может быть пустым!");
-                        return;
-                    }
-
-                    // Проверка на уникальность названия книги
-                    var existingBook = _dbContext.Books.FirstOrDefault(b => b.Title == dialog.Book.Title && b.SeriesId == selectedSeries.Id);
-                    if (existingBook != null)
-                    {
-                        MessageBox.Show("Книга с таким названием уже существует в этой серии!");
-                        return;
-                    }
-
+                    using var db = new AppDbContext();
                     dialog.Book.SeriesId = selectedSeries.Id;
-                    _dbContext.Books.Add(dialog.Book);
-                    _dbContext.SaveChanges();
-
-                    // Обновляем только книгу в серии
+                    db.Books.Add(dialog.Book);
+                    db.SaveChanges();
+                    // Обновление дерева без перезагрузки всех данных
                     CollectionViewSource.GetDefaultView(HierarchyTreeView.ItemsSource).Refresh();
                 }
             }
         }
-        
+
+        // Удаление выбранного элемента
+        private void DeleteItem_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItem = HierarchyTreeView.SelectedItem;
+            if (selectedItem == null) return;
+
+            switch (selectedItem)
+            {
+                case Genre genre:
+                    _dbContext.Series.RemoveRange(genre.Series);  // Удаляем все серии этого жанра
+                    foreach (var series in genre.Series)
+                    {
+                        _dbContext.Books.RemoveRange(series.Books);  // Удаляем все книги в этих сериях
+                    }
+                    _dbContext.Genres.Remove(genre);
+                    break;
+
+                case Series series:
+                    _dbContext.Books.RemoveRange(series.Books);  // Удаляем книги этой серии
+                    _dbContext.Series.Remove(series);
+                    break;
+
+                case Book book:
+                    _dbContext.Books.Remove(book);
+                    break;
+            }
+
+            _dbContext.SaveChanges();
+            LoadData();  // Перегружаем данные, чтобы TreeView обновился
+        }
+
+
+        // Редактирование выбранного элемента
         private void EditItem_Click(object sender, RoutedEventArgs e)
         {
             dynamic selectedItem = HierarchyTreeView.SelectedItem;
@@ -224,14 +181,11 @@ namespace CPS2
                     var genreDialog = new GenreEditWindow { Genre = genre };
                     if (genreDialog.ShowDialog() == true)
                     {
-                        if (string.IsNullOrEmpty(genre.GenreName))
-                        {
-                            MessageBox.Show("Название жанра не может быть пустым!");
-                            return;
-                        }
-
-                        _dbContext.SaveChanges();
-                        FindTreeViewItem(genre)?.Items.Refresh();
+                        using var db = new AppDbContext();
+                        db.Genres.Update(genre);
+                        db.SaveChanges();
+                        // Обновление дерева без перезагрузки всех данных
+                        LoadData();
                     }
                     break;
 
@@ -239,14 +193,11 @@ namespace CPS2
                     var seriesDialog = new SeriesEditWindow { Series = series };
                     if (seriesDialog.ShowDialog() == true)
                     {
-                        if (string.IsNullOrEmpty(series.SeriesName))
-                        {
-                            MessageBox.Show("Название серии не может быть пустым!");
-                            return;
-                        }
-
-                        _dbContext.SaveChanges();
-                        FindTreeViewItem(series)?.Items.Refresh();
+                        using var db = new AppDbContext();
+                        db.Series.Update(series);
+                        db.SaveChanges();
+                        // Обновление дерева без перезагрузки всех данных
+                        LoadData();
                     }
                     break;
 
@@ -254,68 +205,16 @@ namespace CPS2
                     var bookDialog = new BookEditWindow { Book = book };
                     if (bookDialog.ShowDialog() == true)
                     {
-                        if (string.IsNullOrEmpty(book.Title))
-                        {
-                            MessageBox.Show("Название книги не может быть пустым!");
-                            return;
-                        }
-
-                        _dbContext.SaveChanges();
-                        FindTreeViewItem(book)?.Items.Refresh();
+                        using var db = new AppDbContext();
+                        db.Books.Update(book);
+                        db.SaveChanges();
+                        // Обновление дерева без перезагрузки всех данных
+                        LoadData();
                     }
                     break;
             }
         }
-
-        private TreeViewItem FindTreeViewItem(object item)
-        {
-            var container = HierarchyTreeView.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
-            if (container != null) return container;
-
-            foreach (var genre in _dbContext.Genres.Local)
-            {
-                container = HierarchyTreeView.ItemContainerGenerator.ContainerFromItem(genre) as TreeViewItem;
-                if (container == null) continue;
-
-                foreach (var series in genre.Series)
-                {
-                    var seriesContainer = container.ItemContainerGenerator.ContainerFromItem(series) as TreeViewItem;
-                    if (seriesContainer != null && series == item) return seriesContainer;
-                }
-            }
-            return null;
-        }
-
-        private void DeleteItem_Click(object sender, RoutedEventArgs e)
-        {
-            var selectedItem = HierarchyTreeView.SelectedItem;
-            if (selectedItem == null) return;
-
-            switch (selectedItem)
-            {
-                case Genre genre:
-                    _dbContext.Series.RemoveRange(genre.Series);
-                    foreach (var series in genre.Series)
-                    {
-                        _dbContext.Books.RemoveRange(series.Books);
-                    }
-                    _dbContext.Genres.Remove(genre);
-                    break;
-
-                case Series series:
-                    _dbContext.Books.RemoveRange(series.Books);
-                    _dbContext.Series.Remove(series);
-                    break;
-
-                case Book book:
-                    _dbContext.Books.Remove(book);
-                    break;
-            }
-
-            _dbContext.SaveChanges();
-            LoadData();
-        }
-    
+        
         // Для открытия подробностей книги, серии или жанра
         private void HierarchyTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
@@ -410,19 +309,16 @@ namespace CPS2
             }
             finally
             {
-                if (targetItem != null)
-                {
-                    targetItem.Background = Brushes.Transparent;
-                    var parent = FindParent<TreeViewItem>(targetItem.Parent);
-                    parent?.Items.Refresh();
-                }
+                if (targetItem != null) targetItem.Background = Brushes.Transparent;
+                _draggedItem = null;
+                e.Handled = true;
             }
         }
         
         private void TreeViewItem_DragLeave(object sender, DragEventArgs e)
         {
             var targetItem = FindParent<TreeViewItem>((DependencyObject)e.OriginalSource);
-            targetItem.Background = Brushes.Transparent;
+            if (targetItem != null) targetItem.Background = Brushes.Transparent;
         }
 
 
