@@ -170,17 +170,13 @@ namespace CPS2
                     dialog.Series.GenreId = selectedGenre.Id;
                     _dbContext.Series.Add(dialog.Series);
                     _dbContext.SaveChanges();
+                    
+                    _dbContext.Entry(selectedGenre)
+                        .Collection(g => g.Series)
+                        .Load();
 
-                    // Обновляем коллекцию серии в жанре (не обновляем ItemsSource всего дерева)
-                    selectedGenre.Series.Add(dialog.Series);
-
-                    // Ищем элемент TreeView, который соответствует текущему жанру
                     var genreItem = FindTreeViewItem(selectedGenre);
-                    if (genreItem != null)
-                    {
-                        // Обновляем только дочерние элементы (серии) текущего жанра
-                        genreItem.Items.Refresh();
-                    }
+                    genreItem?.Items.Refresh();
                 }
             }
         }
@@ -211,8 +207,9 @@ namespace CPS2
                     _dbContext.Books.Add(dialog.Book);
                     _dbContext.SaveChanges();
 
-                    // Обновляем только книгу в серии
-                    CollectionViewSource.GetDefaultView(HierarchyTreeView.ItemsSource).Refresh();
+                    // Обновляем только конкретную серию
+                    var seriesItem = FindTreeViewItem(selectedSeries);
+                    seriesItem?.Items.Refresh();
                 }
             }
         }
