@@ -203,19 +203,30 @@ namespace CPS2
                         return;
                     }
 
-                    // Проверка на уникальность названия книги
+                    // Проверка на уникальность названия книги в рамках серии
                     var existingBook = _dbContext.Books.FirstOrDefault(b => b.Title == dialog.Book.Title && b.SeriesId == selectedSeries.Id);
                     if (existingBook != null)
                     {
                         MessageBox.Show("Книга с таким названием уже существует в этой серии!");
                         return;
                     }
-                    using var db = new AppDbContext();
+
+                    // Привязываем книгу к выбранной серии
                     dialog.Book.SeriesId = selectedSeries.Id;
-                    db.Books.Add(dialog.Book);
-                    db.SaveChanges();
-                    // Обновление дерева без перезагрузки всех данных
-                    CollectionViewSource.GetDefaultView(HierarchyTreeView.ItemsSource).Refresh();
+
+                    // Добавляем книгу в основной контекст
+                    _dbContext.Books.Add(dialog.Book);
+                    _dbContext.SaveChanges();
+
+                    // Обновляем навигационное свойство для серии
+                    _dbContext.Entry(selectedSeries)
+                        .Collection(s => s.Books)
+                        .Load();
+
+                    // Обновляем только нужный узел
+                    var seriesItem = FindTreeViewItem(selectedSeries);
+                    seriesItem?.Items.Refresh();
+                    seriesItem?.ExpandSubtree(); // Раскрываем узел после добавления
                 }
             }
         }
