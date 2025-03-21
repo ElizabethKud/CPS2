@@ -36,15 +36,43 @@ namespace CPS2
 
         private void LoadData()
         {
-            _dbContext.Genres
-                .Include(g => g.Series)
-                .ThenInclude(s => s.Books)
-                .Load();
+            // Сохраняем состояние раскрытия
+            var expanded = new HashSet<object>();
+            SaveExpandedState(HierarchyTreeView.Items, expanded);
 
+            _dbContext.ChangeTracker.Clear();
+            // Убираем явные вызовы Include, так как ленивую загрузку включаем через конфигурацию
+            _dbContext.Genres.Load(); // Загружаем только жанры, серий и книг не будет в памяти сразу
+
+            // Восстанавливаем состояние
             HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
+            RestoreExpandedState(HierarchyTreeView.Items, expanded);
+        }
+        
+        private void SaveExpandedState(ItemCollection items, HashSet<object> expanded)
+        {
+            foreach (var item in items)
+            {
+                var container = HierarchyTreeView.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
+                if (container != null && container.IsExpanded)
+                {
+                    expanded.Add(item);
+                    SaveExpandedState(container.Items, expanded);
+                }
+            }
+        }
 
-            // Добавляем обработчики к каждому TreeViewItem
-            AddEventHandlers(HierarchyTreeView);
+        private void RestoreExpandedState(ItemCollection items, HashSet<object> expanded)
+        {
+            foreach (var item in items)
+            {
+                var container = HierarchyTreeView.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
+                if (container != null)
+                {
+                    container.IsExpanded = expanded.Contains(item);
+                    RestoreExpandedState(container.Items, expanded);
+                }
+            }
         }
 
         // Добавляем обработчики для всех элементов дерева
@@ -107,15 +135,17 @@ namespace CPS2
                     MessageBox.Show("Жанр с таким названием уже существует!");
                     return;
                 }
-                
+
+                // Добавление нового жанра в базу данных
                 _dbContext.Genres.Add(dialog.Genre);
                 _dbContext.SaveChanges();
-                // Обновление дерева без перезагрузки всех данных
+
+                // Обновляем только коллекцию жанров
                 HierarchyTreeView.ItemsSource = _dbContext.Genres.Local.ToObservableCollection();
             }
         }
-
-        // Добавление серии
+        
+        // Добавление серии 
         private void AddSeries_Click(object sender, RoutedEventArgs e)
         {
             if (HierarchyTreeView.SelectedItem is Genre selectedGenre)
@@ -126,7 +156,7 @@ namespace CPS2
                     if (string.IsNullOrEmpty(dialog.Series.SeriesName))
                     {
                         MessageBox.Show("Название серии не может быть пустым!");
-                        return;
+                        return; 
                     }
 
                     // Проверка на уникальность названия серии
@@ -136,14 +166,15 @@ namespace CPS2
                         MessageBox.Show("Серия с таким названием уже существует в этом жанре!");
                         return;
                     }
-                    
-                    // Используем основной контекст
+
                     dialog.Series.GenreId = selectedGenre.Id;
                     _dbContext.Series.Add(dialog.Series);
                     _dbContext.SaveChanges();
-            
-                    // Обновляем только нужный жанр
+
+                    // Добавление серии в коллекцию жанра
                     selectedGenre.Series.Add(dialog.Series);
+
+                    // Обновляем только нужный жанр
                     var genreItem = FindTreeViewItem(selectedGenre);
                     genreItem?.Items.Refresh();
                 }
@@ -171,17 +202,71 @@ namespace CPS2
                         MessageBox.Show("Книга с таким названием уже существует в этой серии!");
                         return;
                     }
-                    
-                    using var db = new AppDbContext();
+
                     dialog.Book.SeriesId = selectedSeries.Id;
-                    db.Books.Add(dialog.Book);
-                    db.SaveChanges();
-                    // Обновление дерева без перезагрузки всех данных
+                    _dbContext.Books.Add(dialog.Book);
+                    _dbContext.SaveChanges();
+
+                    // Обновляем только книгу в серии
                     CollectionViewSource.GetDefaultView(HierarchyTreeView.ItemsSource).Refresh();
                 }
             }
         }
         
+        private void EditItem_Click(object sender, RoutedEventArgs e)
+        {
+            dynamic selectedItem = HierarchyTreeView.SelectedItem;
+            if (selectedItem == null) return;
+
+            switch (selectedItem)
+            {
+                case Genre genre:
+                    var genreDialog = new GenreEditWindow { Genre = genre };
+                    if (genreDialog.ShowDialog() == true)
+                    {
+                        if (string.IsNullOrEmpty(genre.GenreName))
+                        {
+                            MessageBox.Show("Название жанра не может быть пустым!");
+                            return;
+                        }
+
+                        _dbContext.SaveChanges();
+                        FindTreeViewItem(genre)?.Items.Refresh();
+                    }
+                    break;
+
+                case Series series:
+                    var seriesDialog = new SeriesEditWindow { Series = series };
+                    if (seriesDialog.ShowDialog() == true)
+                    {
+                        if (string.IsNullOrEmpty(series.SeriesName))
+                        {
+                            MessageBox.Show("Название серии не может быть пустым!");
+                            return;
+                        }
+
+                        _dbContext.SaveChanges();
+                        FindTreeViewItem(series)?.Items.Refresh();
+                    }
+                    break;
+
+                case Book book:
+                    var bookDialog = new BookEditWindow { Book = book };
+                    if (bookDialog.ShowDialog() == true)
+                    {
+                        if (string.IsNullOrEmpty(book.Title))
+                        {
+                            MessageBox.Show("Название книги не может быть пустым!");
+                            return;
+                        }
+
+                        _dbContext.SaveChanges();
+                        FindTreeViewItem(book)?.Items.Refresh();
+                    }
+                    break;
+            }
+        }
+
         private TreeViewItem FindTreeViewItem(object item)
         {
             var container = HierarchyTreeView.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
@@ -201,7 +286,6 @@ namespace CPS2
             return null;
         }
 
-        // Удаление выбранного элемента
         private void DeleteItem_Click(object sender, RoutedEventArgs e)
         {
             var selectedItem = HierarchyTreeView.SelectedItem;
@@ -210,16 +294,16 @@ namespace CPS2
             switch (selectedItem)
             {
                 case Genre genre:
-                    _dbContext.Series.RemoveRange(genre.Series);  // Удаляем все серии этого жанра
+                    _dbContext.Series.RemoveRange(genre.Series);
                     foreach (var series in genre.Series)
                     {
-                        _dbContext.Books.RemoveRange(series.Books);  // Удаляем все книги в этих сериях
+                        _dbContext.Books.RemoveRange(series.Books);
                     }
                     _dbContext.Genres.Remove(genre);
                     break;
 
                 case Series series:
-                    _dbContext.Books.RemoveRange(series.Books);  // Удаляем книги этой серии
+                    _dbContext.Books.RemoveRange(series.Books);
                     _dbContext.Series.Remove(series);
                     break;
 
@@ -229,47 +313,9 @@ namespace CPS2
             }
 
             _dbContext.SaveChanges();
-            LoadData();  // Перегружаем данные, чтобы TreeView обновился
+            LoadData();
         }
-
-
-        // Редактирование выбранного элемента
-        private void EditItem_Click(object sender, RoutedEventArgs e)
-        {
-            dynamic selectedItem = HierarchyTreeView.SelectedItem;
-            if (selectedItem == null) return;
-
-            switch (selectedItem)
-            {
-                case Genre genre:
-                    var genreDialog = new GenreEditWindow { Genre = genre };
-                    if (genreDialog.ShowDialog() == true)
-                    {
-                        _dbContext.SaveChanges();
-                        FindTreeViewItem(genre)?.Items.Refresh();
-                    }
-                    break;
-
-                case Series series:
-                    var seriesDialog = new SeriesEditWindow { Series = series };
-                    if (seriesDialog.ShowDialog() == true)
-                    {
-                        _dbContext.SaveChanges();
-                        FindTreeViewItem(series)?.Items.Refresh();
-                    }
-                    break;
-
-                case Book book:
-                    var bookDialog = new BookEditWindow { Book = book };
-                    if (bookDialog.ShowDialog() == true)
-                    {
-                        _dbContext.SaveChanges();
-                        FindTreeViewItem(book)?.Items.Refresh();
-                    }
-                    break;
-            }
-        }
-        
+    
         // Для открытия подробностей книги, серии или жанра
         private void HierarchyTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
