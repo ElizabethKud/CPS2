@@ -48,11 +48,6 @@ namespace CPS2
                 return;
             }
 
-            if (!string.IsNullOrEmpty(PasswordBox.Password))
-            {
-                User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password);
-            }
-
             DialogResult = true;
             Close();
         }
