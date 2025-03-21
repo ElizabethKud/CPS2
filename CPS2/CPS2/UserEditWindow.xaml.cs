@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+﻿﻿using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using BCrypt.Net;
@@ -46,11 +46,6 @@ namespace CPS2
             {
                 MessageBox.Show("Некорректное значение роли!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
-            }
-
-            if (!string.IsNullOrEmpty(PasswordBox.Password))
-            {
-                User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password);
             }
 
             DialogResult = true;

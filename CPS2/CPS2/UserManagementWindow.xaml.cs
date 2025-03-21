@@ -33,13 +33,44 @@ namespace CPS2
         {
             if (UsersListView.SelectedItem is User selectedUser)
             {
-                var dialog = new UserEditWindow { User = selectedUser };
+                // Создаем копию объекта для редактирования
+                var userCopy = new User 
+                {
+                    Id = selectedUser.Id,
+                    Username = selectedUser.Username,
+                    Role = selectedUser.Role,
+                    IsActive = selectedUser.IsActive
+                };
+
+                var dialog = new UserEditWindow { User = userCopy };
                 if (dialog.ShowDialog() == true)
                 {
-                    using var db = new AppDbContext();
-                    db.Users.Update(selectedUser);
-                    db.SaveChanges();
-                    LoadUsers();
+                    try
+                    {
+                        using var db = new AppDbContext();
+                
+                        // Находим пользователя в БД
+                        var dbUser = db.Users.First(u => u.Id == userCopy.Id);
+                
+                        // Обновляем поля
+                        dbUser.Username = userCopy.Username;
+                        dbUser.Role = userCopy.Role;
+                        dbUser.IsActive = userCopy.IsActive;
+                
+                        // Если пароль был изменен
+                        if (!string.IsNullOrEmpty(userCopy.PasswordHash) && 
+                            userCopy.PasswordHash != dbUser.PasswordHash)
+                        {
+                            dbUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(userCopy.PasswordHash);
+                        }
+
+                        db.SaveChanges();
+                        LoadUsers(); // Обновляем список
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Ошибка сохранения: {ex.Message}");
+                    }
                 }
             }
         }
