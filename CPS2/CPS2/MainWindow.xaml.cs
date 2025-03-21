@@ -157,7 +157,7 @@ namespace CPS2
                     if (string.IsNullOrEmpty(dialog.Series.SeriesName))
                     {
                         MessageBox.Show("Название серии не может быть пустым!");
-                        return; 
+                        return;
                     }
 
                     // Проверка на уникальность названия серии
@@ -172,12 +172,16 @@ namespace CPS2
                     _dbContext.Series.Add(dialog.Series);
                     _dbContext.SaveChanges();
 
-                    // Добавление серии в коллекцию жанра
+                    // Обновляем коллекцию серии в жанре (не обновляем ItemsSource всего дерева)
                     selectedGenre.Series.Add(dialog.Series);
 
-                    // Обновляем только нужный жанр
+                    // Ищем элемент TreeView, который соответствует текущему жанру
                     var genreItem = FindTreeViewItem(selectedGenre);
-                    genreItem?.Items.Refresh();
+                    if (genreItem != null)
+                    {
+                        // Обновляем только дочерние элементы (серии) текущего жанра
+                        genreItem.Items.Refresh();
+                    }
                 }
             }
         }
