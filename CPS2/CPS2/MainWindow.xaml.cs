@@ -27,7 +27,6 @@ namespace CPS2
             if (_currentUser.Role != "admin")
             {
                 AdminMenu.Visibility = Visibility.Collapsed;
-                TreeContextMenu.Visibility = Visibility.Collapsed; // Скрываем меню полностью
             }
             else
             {
