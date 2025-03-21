@@ -43,5 +43,4 @@ VALUES (
     'admin'
 ) ON CONFLICT (username) DO NOTHING;
 
--- Проверка на наличие правильных данных
-SELECT * FROM users;
+SELECT * FROM books;
